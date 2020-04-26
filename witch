@@ -2,7 +2,7 @@
 
 is_installed()
 {
-	brew ls --versions $1 > /dev/null;
+	brew ls --versions $1 > /dev/null
 }
 
 install()
@@ -12,6 +12,23 @@ install()
 	fi
 }
 
-for dependency in $(cat recipe.json | jq .dependencies | jq -r .[]); do
-	install $dependency
-done
+install_dependencies()
+{
+	for dependency in $(echo $1 | $JQ -r .[]); do
+		install $dependency
+	done
+}
+
+build()
+{
+	install_dependencies $(echo $1 | $JQ -c .dependencies)
+}
+
+make_recipe()
+{
+	install jq
+	JQ=$(brew --prefix jq)/bin/jq
+	build $(cat $1 | $JQ -c)
+}
+
+make_recipe recipe.json
