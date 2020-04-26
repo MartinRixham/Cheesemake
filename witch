@@ -3,20 +3,43 @@
 map()
 {
 	for line in $(cat); do
-		$1 $line
+		echo $line | $@
+	done
+}
+
+call()
+{
+	for line in $(cat); do
+		$@ $line
+	done
+}
+
+filter()
+{
+	for line in $(cat); do
+		if echo $line | $@; then
+			echo $line
+		fi
+	done
+}
+
+not()
+{
+	for line in $(cat); do
+		if ! echo $line | $@; then
+			echo $line
+		fi
 	done
 }
 
 is_installed()
 {
-	brew ls --versions $1 > /dev/null
+	brew ls --versions $(cat) > /dev/null
 }
 
 install()
 {
-	if ! is_installed $1; then
-		brew install $1
-	fi
+	not is_installed | call brew install
 }
 
 install_dependencies()
@@ -26,7 +49,7 @@ install_dependencies()
 
 install_jq()
 {
-	install jq
+	echo jq | install
 	JQ=$(brew --prefix jq)/bin/jq
 }
 
