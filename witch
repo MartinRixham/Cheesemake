@@ -1,17 +1,17 @@
 #! /bin/bash
 
-is_installed() {
+is_installed()
+{
 	brew ls --versions $1 > /dev/null;
 }
 
-if is_installed jq; then
-	echo installed
-else
-	echo not installed
-fi
+install()
+{
+	if ! is_installed $1; then
+		brew install $1
+	fi
+}
 
-if cat recipe.json | jq . > /dev/null; then
-	echo valid
-else
-	echo not vaild
-fi
+for dependency in $(cat recipe.json | jq .dependencies | jq -r .[]); do
+	install $dependency
+done
