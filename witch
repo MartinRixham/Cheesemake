@@ -1,5 +1,12 @@
 #! /bin/bash
 
+map()
+{
+	for line in $(cat); do
+		$1 $line
+	done
+}
+
 is_installed()
 {
 	brew ls --versions $1 > /dev/null
@@ -14,21 +21,24 @@ install()
 
 install_dependencies()
 {
-	for dependency in $(echo $1 | $JQ -r .[]); do
-		install $dependency
-	done
+	$JQ -r .[] | map install
+}
+
+install_jq()
+{
+	install jq
+	JQ=$(brew --prefix jq)/bin/jq
 }
 
 build()
 {
-	install_dependencies $(echo $1 | $JQ -c .dependencies)
+	$JQ .dependencies | install_dependencies 
 }
 
 make_recipe()
 {
-	install jq
-	JQ=$(brew --prefix jq)/bin/jq
-	build $(cat $1 | $JQ -c)
+	install_jq
+	cat $1 | build
 }
 
 make_recipe recipe.json
