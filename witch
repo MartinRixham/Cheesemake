@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -Eeuo pipefail
+
 map()
 {
 	for line in $(cat); do
@@ -42,15 +44,15 @@ install()
 	not is_installed | call brew install
 }
 
-install_dependencies()
-{
-	$JQ -r .[] | map install
-}
-
 install_jq()
 {
 	echo jq | install
 	JQ=$(brew --prefix jq)/bin/jq
+}
+
+install_dependencies()
+{
+	$JQ -r .[] | map install
 }
 
 build()
