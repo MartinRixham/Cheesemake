@@ -4,21 +4,21 @@ set -Eeuo pipefail
 
 map()
 {
-	for line in $(cat); do
+	while read line; do
 		echo $line | $@
 	done
 }
 
 call()
 {
-	for line in $(cat); do
+	while read line; do
 		$@ $line
 	done
 }
 
 filter()
 {
-	for line in $(cat); do
+	while read line; do
 		if echo $line | $@; then
 			echo $line
 		fi
@@ -27,7 +27,7 @@ filter()
 
 not()
 {
-	for line in $(cat); do
+	while read line; do
 		if ! echo $line | $@; then
 			echo $line
 		fi
