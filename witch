@@ -62,20 +62,20 @@ make_directories()
 
 compile()
 {
-	find src -name "*.c" | gcc -Wall $(cat) -o build/src/output
+	find src -name "*.c" | gcc -Wall $(cat) -o build/src/$1
 }
 
 build()
 {
-	$JQ .dependencies | install_dependencies 
+	echo $1 | $JQ .dependencies | install_dependencies 
 	make_directories
-	compile
+	echo $1 | $JQ -r .name | compile $(cat)
 }
 
 make_recipe()
 {
 	install_jq
-	cat $1 | build
+	cat $1 | build "$(cat)"
 }
 
 make_recipe recipe.json
