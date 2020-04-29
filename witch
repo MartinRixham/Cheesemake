@@ -55,9 +55,21 @@ install_dependencies()
 	$JQ -r .[] | map install
 }
 
+make_directories()
+{
+	mkdir -p build/src
+}
+
+compile()
+{
+	find src -name "*.c" | gcc -Wall $(cat) -o build/src/output
+}
+
 build()
 {
 	$JQ .dependencies | install_dependencies 
+	make_directories
+	compile
 }
 
 make_recipe()
