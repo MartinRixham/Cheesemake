@@ -34,6 +34,11 @@ not()
 	done
 }
 
+clean()
+{
+	rm -rf build
+}
+
 is_installed()
 {
 	brew ls --versions $(cat) > /dev/null
@@ -78,4 +83,9 @@ make_recipe()
 	cat $1 | build "$(cat)"
 }
 
-make_recipe recipe.json
+for task in $@; do
+	case $task in
+    	clean) clean;;
+    	compile|package) make_recipe recipe.json;;
+	esac
+done
