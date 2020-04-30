@@ -65,22 +65,27 @@ make_directories()
 	mkdir -p build/src
 }
 
+get_sources()
+{
+	find src -name "*.c"
+}
+
 compile()
 {
-	find src -name "*.c" | gcc -Wall $(cat) -o build/src/$1
+	gcc -Wall -o build/src/$(cat) $(get_sources)
 }
 
 build()
 {
 	echo $1 | $JQ .dependencies | install_dependencies 
 	make_directories
-	echo $1 | $JQ -r .name | compile $(cat)
+	echo $1 | $JQ -r .name | compile
 }
 
 make_recipe()
 {
 	install_jq
-	cat $1 | build "$(cat)"
+	build "$(cat $1)"
 }
 
 for task in $@; do
