@@ -34,6 +34,12 @@ not()
 	done
 }
 
+execute()
+{
+	echo $@
+	$@
+}
+
 clean()
 {
 	rm -rf build
@@ -72,7 +78,7 @@ get_sources()
 
 compile()
 {
-	gcc -Wall -o build/src/$(cat) $(get_sources)
+	execute gcc -Wall -o build/src/$(cat) $(get_sources)
 }
 
 build()
