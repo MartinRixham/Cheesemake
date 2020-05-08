@@ -121,8 +121,14 @@ make_recipe()
 
 test()
 {
+	echo $1
+	compile test test $1
+}
+
+test_recipe()
+{
 	make_recipe $1
-	echo test | compile test
+	test $(cat $1 | $JQ -c .dependencies | $JQ -r .[])
 }
 
 do_task()
@@ -130,7 +136,7 @@ do_task()
 	case $1 in
     	clean) clean;;
     	compile) make_recipe $2;;
-		test) test $2;;
+		test) test_recipe $2;;
 	esac
 }
 
