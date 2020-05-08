@@ -5,13 +5,6 @@ set -Eeuo pipefail
 map()
 {
 	while read line; do
-		echo $line | $@
-	done
-}
-
-call()
-{
-	while read line; do
 		$@ $line
 	done
 }
@@ -19,7 +12,7 @@ call()
 filter()
 {
 	while read line; do
-		if echo $line | $@; then
+		if $($@ $line > /dev/null); then
 			echo $line
 		fi
 	done
@@ -28,13 +21,13 @@ filter()
 not()
 {
 	while read line; do
-		if ! echo $line | $@; then
+		if ! $($@ $line > /dev/null); then
 			echo $line
 		fi
 	done
 }
 
-execute()
+verbose()
 {
 	echo $@
 	$@
@@ -47,12 +40,12 @@ clean()
 
 is_installed()
 {
-	brew ls --versions $(cat) > /dev/null
+	brew ls --versions $1
 }
 
 install()
 {
-	echo $1 | not is_installed | call brew install
+	echo $1 | not is_installed | map brew install
 }
 
 install_jq()
@@ -73,7 +66,7 @@ get_sources()
 
 get_prefix()
 {
-	brew --prefix $(cat) 
+	brew --prefix $1 
 }
 
 get_include()
@@ -83,27 +76,27 @@ get_include()
 
 get_includes()
 {
-	echo $1 | $JQ -r .[] | map get_prefix | call get_include
+	echo $1 | $JQ -r .[] | map get_prefix | map get_include
 }
 
 get_link()
 {
-	echo -L$(echo $1 | get_prefix)/lib -l$1
+	echo -L$(get_prefix $1)/lib -l$1
 }
 
 get_links()
 {
-	echo $1 | $JQ -r .[] | call get_link
+	echo $1 | $JQ -r .[] | map get_link
 }
 
 compile()
 {
-	execute gcc -Wall -o build/$1/$2 $(get_includes $3) $(get_sources $1) $(get_links $3)
+	verbose gcc -Wall -o build/$1/$2 $(get_includes $3) $(get_sources $1) $(get_links $3)
 }
 
 build()
 {
-	echo $2 | $JQ -r .[] | call install
+	echo $2 | $JQ -r .[] | map install
 	make_directories
 	compile src $1 $2
 }
@@ -113,7 +106,7 @@ read_recipe_and_build()
 	build $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies)
 }
 
-make_recipe()
+build_recipe()
 {
 	install_jq
 	read_recipe_and_build "$(cat $1)"
@@ -126,7 +119,7 @@ test()
 
 test_recipe()
 {
-	make_recipe $1
+	build_recipe $1
 	test $(cat $1 | $JQ -c .dependencies)
 }
 
@@ -134,7 +127,7 @@ do_task()
 {
 	case $1 in
     	clean) clean;;
-    	compile) make_recipe $2;;
+    	build) build_recipe $2;;
 		test) test_recipe $2;;
 	esac
 }
