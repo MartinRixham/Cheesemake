@@ -55,11 +55,6 @@ install()
 	echo $1 | not is_installed | call brew install
 }
 
-install_make()
-{
-	echo homebrew/dupes/make | install
-}
-
 install_jq()
 {
 	install jq
@@ -81,9 +76,14 @@ get_prefix()
 	brew --prefix $(cat) 
 }
 
+get_include()
+{
+	echo -I$1/include
+}
+
 get_includes()
 {
-	echo $1 | map get_prefix | echo -I$(cat)/include
+	echo $1 | $JQ -r .[] | map get_prefix | call get_include
 }
 
 get_link()
@@ -93,7 +93,7 @@ get_link()
 
 get_links()
 {
-	echo $1 | call get_link
+	echo $1 | $JQ -r .[] | call get_link
 }
 
 compile()
@@ -103,14 +103,14 @@ compile()
 
 build()
 {
-	echo $2 | call install
+	echo $2 | $JQ -r .[] | call install
 	make_directories
 	compile src $1 $2
 }
 
 read_recipe_and_build()
 {
-	build $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies | $JQ -r .[])
+	build $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies)
 }
 
 make_recipe()
@@ -121,14 +121,13 @@ make_recipe()
 
 test()
 {
-	echo $1
 	compile test test $1
 }
 
 test_recipe()
 {
 	make_recipe $1
-	test $(cat $1 | $JQ -c .dependencies | $JQ -r .[])
+	test $(cat $1 | $JQ -c .dependencies)
 }
 
 do_task()
