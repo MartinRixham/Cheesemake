@@ -52,18 +52,18 @@ is_installed()
 
 install()
 {
-	not is_installed | call brew install
+	echo $1 | not is_installed | call brew install
+}
+
+install_make()
+{
+	echo homebrew/dupes/make | install
 }
 
 install_jq()
 {
-	echo jq | install
+	install jq
 	JQ=$(brew --prefix jq)/bin/jq
-}
-
-install_dependencies()
-{
-	$JQ -r .[] | map install
 }
 
 make_directories()
@@ -73,30 +73,67 @@ make_directories()
 
 get_sources()
 {
-	find src -name "*.c"
+	find $1 -name "*.c"
+}
+
+get_prefix()
+{
+	brew --prefix $(cat) 
+}
+
+get_includes()
+{
+	echo $1 | map get_prefix | echo -I$(cat)/include
+}
+
+get_link()
+{
+	echo -L$(echo $1 | get_prefix)/lib -l$1
+}
+
+get_links()
+{
+	echo $1 | call get_link
 }
 
 compile()
 {
-	execute gcc -Wall -o build/src/$(cat) $(get_sources)
+	execute gcc -Wall -o build/$1/$2 $(get_includes $3) $(get_sources $1) $(get_links $3)
 }
 
 build()
 {
-	echo $1 | $JQ .dependencies | install_dependencies 
+	echo $2 | call install
 	make_directories
-	echo $1 | $JQ -r .name | compile
+	compile src $1 $2
+}
+
+read_recipe_and_build()
+{
+	build $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies | $JQ -r .[])
 }
 
 make_recipe()
 {
 	install_jq
-	build "$(cat $1)"
+	read_recipe_and_build "$(cat $1)"
+}
+
+test()
+{
+	make_recipe $1
+	echo test | compile test
+}
+
+do_task()
+{
+	case $1 in
+    	clean) clean;;
+    	compile) make_recipe $2;;
+		test) test $2;;
+	esac
 }
 
 for task in $@; do
-	case $task in
-    	clean) clean;;
-    	compile|package) make_recipe recipe.json;;
-	esac
+	do_task $task recipe.json
 done

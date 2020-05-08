@@ -2,5 +2,6 @@
 	"name": "example",
 	"dependencies":
 		[
+			"check"
 		]
 }
