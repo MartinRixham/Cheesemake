@@ -64,12 +64,6 @@ install_jq()
 	JQ=$(brew --prefix jq)/bin/jq
 }
 
-make_directories()
-{
-	mkdir -p build/src
-	mkdir -p build/test
-}
-
 get_sources()
 {
 	find $1 -name *.c
@@ -102,7 +96,7 @@ get_links()
 
 compile()
 {
-	verbose gcc -Wall -o build/$1/$2 $(get_includes $3) $(get_sources $1) $(get_links $3)
+	verbose $1 -Wall -o build/$2/$3 $(get_includes $4) $(get_sources $2) $(get_links $4)
 }
 
 is_test_dependency()
@@ -112,31 +106,37 @@ is_test_dependency()
 
 build()
 {
-	echo $2 | $JQ -c .[] | $JQ -r .package | map install
-	make_directories
-	compile src $1 $(echo $2 | $JQ -c .[] | not is_test_dependency | $JQ -r .package | collect)
+	echo $3 | $JQ -c .[] | $JQ -r .package | map install
+	mkdir -p build/src
+	echo $3 | $JQ -c .[] | not is_test_dependency | $JQ -r .package | collect | compile $1 src $2 $(cat)
+}
+
+get_compiler()
+{
+	echo $1 | $JQ -er .compiler
 }
 
 read_recipe_and_build()
 {
-	build $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies)
+	build $(get_compiler $1) $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies)
 }
 
 build_recipe()
 {
 	install_jq
-	read_recipe_and_build "$(cat $1)"
+	read_recipe_and_build "$(cat $1 | $JQ -c)"
 }
 
-test()
+compile_tests()
 {
-	compile test test $(echo $1 | $JQ -c .[] | $JQ -r .package | collect)
+	compile $(get_compiler $1) test test $(echo $1 | $JQ -c .dependencies | $JQ -c .[] | $JQ -r .package | collect)
 }
 
 test_recipe()
 {
 	build_recipe $1
-	test $(cat $1 | $JQ -c .dependencies)
+	mkdir -p build/test
+	compile_tests $(cat $1 | $JQ -c)
 	build/test/test
 }
 

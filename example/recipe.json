@@ -1,5 +1,6 @@
 {
 	"name": "example",
+	"compiler": "gcc",
 	"dependencies":
 		[
 			{
