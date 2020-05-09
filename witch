@@ -67,6 +67,7 @@ install_jq()
 make_directories()
 {
 	mkdir -p build/src
+	mkdir -p build/test
 }
 
 get_sources()
@@ -136,6 +137,7 @@ test_recipe()
 {
 	build_recipe $1
 	test $(cat $1 | $JQ -c .dependencies)
+	build/test/test
 }
 
 do_task()
