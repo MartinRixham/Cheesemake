@@ -101,14 +101,19 @@ get_links()
 
 compile()
 {
-	verbose gcc -Wall -o build/$1/$2 $(get_includes "${3}") $(get_sources $1) $(get_links $3)
+	verbose gcc -Wall -o build/$1/$2 $(get_includes $3) $(get_sources $1) $(get_links $3)
+}
+
+is_test_dependency()
+{
+	echo $1 | $JQ .scope | grep test
 }
 
 build()
 {
 	echo $2 | $JQ -c .[] | $JQ -r .package | map install
 	make_directories
-	compile src $1 $(echo $2 | $JQ -c .[] | $JQ -r .package | collect)
+	compile src $1 $(echo $2 | $JQ -c .[] | not is_test_dependency | $JQ -r .package | collect)
 }
 
 read_recipe_and_build()
