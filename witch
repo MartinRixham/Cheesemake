@@ -2,17 +2,10 @@
 
 set -Eeuo pipefail
 
-call()
-{
-	while read line; do
-		$@ $line
-	done
-}
-
 map()
 {
 	while read line; do
-		echo $line | $@
+		$@ $line
 	done
 }
 
@@ -40,6 +33,16 @@ verbose()
 	$@
 }
 
+collect()
+{
+	tr '\n' ','
+}
+
+split()
+{
+	tr ',' '\n' | sed '/^$/d'
+}
+
 clean()
 {
 	rm -rf build
@@ -52,7 +55,7 @@ is_installed()
 
 install()
 {
-	echo $1 | not is_installed | call brew install
+	echo $1 | not is_installed | map brew install
 }
 
 install_jq()
@@ -73,7 +76,7 @@ get_sources()
 
 get_prefix()
 {
-	brew --prefix $1 
+	brew --prefix $1
 }
 
 get_include()
@@ -83,7 +86,7 @@ get_include()
 
 get_includes()
 {
-	echo $1 | $JQ -c .[] | map $JQ -r .package | call get_prefix | call get_include
+	echo $1 | split | map get_prefix | map get_include
 }
 
 get_link()
@@ -93,19 +96,19 @@ get_link()
 
 get_links()
 {
-	echo $1 | $JQ -c .[] | map $JQ -r .package | call get_link
+	echo $1 | split | map get_link
 }
 
 compile()
 {
-	verbose gcc -Wall -o build/$1/$2 $(get_includes $3) $(get_sources $1) $(get_links $3)
+	verbose gcc -Wall -o build/$1/$2 $(get_includes "${3}") $(get_sources $1) $(get_links $3)
 }
 
 build()
 {
-	echo $2 | $JQ -c .[] | map $JQ -r .package | call install
+	echo $2 | $JQ -c .[] | $JQ -r .package | map install
 	make_directories
-	compile src $1 $2
+	compile src $1 $(echo $2 | $JQ -c .[] | $JQ -r .package | collect)
 }
 
 read_recipe_and_build()
@@ -121,7 +124,7 @@ build_recipe()
 
 test()
 {
-	compile test test $1
+	compile test test $(echo $1 | $JQ -c .[] | $JQ -r .package | collect)
 }
 
 test_recipe()
@@ -133,8 +136,8 @@ test_recipe()
 do_task()
 {
 	case $1 in
-    	clean) clean;;
-    	build) build_recipe $2;;
+		clean) clean;;
+		build) build_recipe $2;;
 		test) test_recipe $2;;
 	esac
 }

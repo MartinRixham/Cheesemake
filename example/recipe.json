@@ -3,10 +3,11 @@
 	"dependencies":
 		[
 			{
-				"package": "tinyxml"
+				"package": "tinyxml2"
 			},
 			{
-				"package": "check"
+				"package": "check",
+				"scope": "test"
 			}
 		]
 }
