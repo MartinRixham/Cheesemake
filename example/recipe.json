@@ -2,7 +2,11 @@
 	"name": "example",
 	"dependencies":
 		[
-			"tinyxml",
-			"check"
+			{
+				"package": "tinyxml"
+			},
+			{
+				"package": "check"
+			}
 		]
 }

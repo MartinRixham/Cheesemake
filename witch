@@ -2,10 +2,17 @@
 
 set -Eeuo pipefail
 
-map()
+call()
 {
 	while read line; do
 		$@ $line
+	done
+}
+
+map()
+{
+	while read line; do
+		echo $line | $@
 	done
 }
 
@@ -45,7 +52,7 @@ is_installed()
 
 install()
 {
-	echo $1 | not is_installed | map brew install
+	echo $1 | not is_installed | call brew install
 }
 
 install_jq()
@@ -76,7 +83,7 @@ get_include()
 
 get_includes()
 {
-	echo $1 | $JQ -r .[] | map get_prefix | map get_include
+	echo $1 | $JQ -c .[] | map $JQ -r .package | call get_prefix | call get_include
 }
 
 get_link()
@@ -86,7 +93,7 @@ get_link()
 
 get_links()
 {
-	echo $1 | $JQ -r .[] | map get_link
+	echo $1 | $JQ -c .[] | map $JQ -r .package | call get_link
 }
 
 compile()
@@ -96,7 +103,7 @@ compile()
 
 build()
 {
-	echo $2 | $JQ -r .[] | map install
+	echo $2 | $JQ -c .[] | map $JQ -r .package | call install
 	make_directories
 	compile src $1 $2
 }
