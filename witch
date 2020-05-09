@@ -61,7 +61,7 @@ make_directories()
 
 get_sources()
 {
-	find $1 -name "*.c"
+	find $1 -name *.c
 }
 
 get_prefix()
