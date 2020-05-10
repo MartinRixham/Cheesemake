@@ -159,13 +159,23 @@ link_tests()
 	get_sources test | map get_output | filter is_executable | map link
 }
 
+run()
+{
+	$1
+}
+
+run_tests()
+{
+	get_sources test | map get_output | filter is_executable | map get_executable | map run
+}
+
 test_recipe()
 {
 	compile_recipe
 	mkdir -p build/test
 	compile_tests
 	link_tests
-	#build/test/test
+	run_tests
 }
 
 do_task()
