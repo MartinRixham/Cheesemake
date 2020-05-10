@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+RECIPE=recipe.json
+
 map()
 {
 	while read line; do
@@ -33,14 +35,9 @@ verbose()
 	$@
 }
 
-collect()
+all()
 {
-	tr '\n' ','
-}
-
-split()
-{
-	tr ',' '\n' | sed '/^$/d'
+	echo $(cat)
 }
 
 clean()
@@ -60,17 +57,17 @@ get_link()
 
 get_links()
 {
-	echo $1 | $JQ -c .dependencies | $JQ -c .[] | $2 | $JQ -r .package | map get_link
+	cat $RECIPE | $JQ -c .dependencies | $JQ -c .[] | $1 | $JQ -r .package | map get_link
 }
 
 get_compiler()
 {
-	echo $1 | $JQ -r .compiler
+	cat $RECIPE | $JQ -r .compiler
 }
 
 get_name()
 {
-	echo $1 | $JQ -r .name
+	cat $RECIPE | $JQ -r .name
 }
 
 get_test()
@@ -83,24 +80,19 @@ is_test_dependency()
 	echo $1 | $JQ .scope | grep test
 }
 
-non_test_dependencies()
+source_dependencies()
 {
 	not is_test_dependency
 }
 
-all()
-{
-	echo $(cat)
-}
-
 compile()
 {
-	verbose $(get_compiler $1) -Wall -o build/$2/$($3 $1) $(get_sources $2) $(get_links $1 $4)
+	verbose $(get_compiler) -o build/$1/$($2) $(get_sources $1) $(get_links $3)
 }
 
 compile_source()
 {
-	compile $1 src get_name non_test_dependencies
+	compile src get_name source_dependencies
 }
 
 build_recipe()
@@ -108,19 +100,19 @@ build_recipe()
 	jq --version > /dev/null
 	JQ=$(which jq)
 	mkdir -p build/src
-	compile_source "$(cat $1 | $JQ -c .)"
+	compile_source
 }
 
 compile_tests()
 {
-	compile $1 test get_test all
+	compile test get_test all
 }
 
 test_recipe()
 {
-	build_recipe $1
+	build_recipe
 	mkdir -p build/test
-	compile_tests $(cat $1 | $JQ -c .)
+	compile_tests
 	build/test/test
 }
 
@@ -128,11 +120,11 @@ do_task()
 {
 	case $1 in
 		clean) clean;;
-		build) build_recipe $2;;
-		test) test_recipe $2;;
+		build) build_recipe;;
+		test) test_recipe;;
 	esac
 }
 
 for task in $@; do
-	do_task $task recipe.json
+	do_task $task
 done

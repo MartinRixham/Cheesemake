@@ -1,6 +1,6 @@
 {
 	"name": "example",
-	"compiler": "gcc",
+	"compiler": "gcc -Wall",
 	"dependencies":
 		[
 			{
