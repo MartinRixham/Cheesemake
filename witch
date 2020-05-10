@@ -85,14 +85,14 @@ source_dependencies()
 	not is_test_dependency
 }
 
-output_file()
+object_file()
 {
 	echo build/$1.o
 }
 
 get_output()
 {
-	echo $1 | tr '.' ' ' | map output_file
+	echo $1 | tr '.' ' ' | map object_file
 }
 
 compile()
@@ -113,9 +113,50 @@ compile_recipe()
 	compile_source
 }
 
+without_flags()
+{
+	echo $1
+}
+
+is_executable()
+{
+	objdump -d $1 | grep "<main>"
+}
+
+all_sources()
+{
+	get_sources src
+	get_sources test
+}
+
+get_objects()
+{
+	all_sources | map get_output | not is_executable
+}
+
+executable_file()
+{
+	echo $1
+}
+
+get_executable()
+{
+	echo $1 | tr '.' ' ' | map executable_file
+}
+
+link()
+{
+	verbose $(get_compiler | map without_flags) -o $(get_executable $1) $(get_objects) $1 $(get_links all)
+}
+
 compile_tests()
 {
 	get_sources test | map compile
+}
+
+link_tests()
+{
+	get_sources test | map get_output | filter is_executable | map link
 }
 
 test_recipe()
@@ -123,6 +164,7 @@ test_recipe()
 	compile_recipe
 	mkdir -p build/test
 	compile_tests
+	link_tests
 	#build/test/test
 }
 
