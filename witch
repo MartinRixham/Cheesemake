@@ -67,22 +67,7 @@ get_compiler()
 
 get_name()
 {
-	$JQ -r .name $RECIPE 
-}
-
-get_test()
-{
-	echo test
-}
-
-is_test_dependency()
-{
-	echo $1 | $JQ .scope | grep test
-}
-
-source_dependencies()
-{
-	not is_test_dependency
+	$JQ -r .name $RECIPE | echo build/$(cat)
 }
 
 object_file()
@@ -146,7 +131,7 @@ get_executable()
 
 link()
 {
-	verbose $(get_compiler | map without_flags) -o $(get_executable $2) $(get_objects) $2 $(get_links $1)
+	verbose $(get_compiler | map without_flags) -o $($2 $3) $(get_objects) $3 $(get_links $1)
 }
 
 compile_tests()
@@ -156,7 +141,7 @@ compile_tests()
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable | map link all
+	get_sources test | map get_output | filter is_executable | map link all get_executable
 }
 
 run()
@@ -178,16 +163,26 @@ test_recipe()
 	run_tests
 }
 
+is_test_dependency()
+{
+	echo $1 | $JQ .scope | grep test
+}
+
+source_dependencies()
+{
+	not is_test_dependency
+}
+
 package_recipe()
 {
 	test_recipe
-	get_sources src | map get_output | filter is_executable | map link source_dependencies
+	get_sources src | map get_output | filter is_executable | map link source_dependencies get_name
 }
 
 run_recipe()
 {
 	package_recipe
-	get_sources src | map get_output | filter is_executable | map get_executable | map run
+	get_name | map run
 }
 
 do_task()
