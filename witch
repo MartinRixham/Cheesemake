@@ -60,7 +60,7 @@ get_sources()
 
 get_link()
 {
-	echo -l$1
+	echo -l$@
 }
 
 get_links()
@@ -173,7 +173,7 @@ test_recipe()
 
 is_test_dependency()
 {
-	echo $1 | $JQ .scope | grep test
+	echo $@ | $JQ .scope | grep test
 }
 
 source_dependencies()
