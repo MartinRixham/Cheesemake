@@ -146,7 +146,7 @@ get_executable()
 
 link()
 {
-	verbose $(get_compiler | map without_flags) -o $(get_executable $1) $(get_objects) $1 $(get_links all)
+	verbose $(get_compiler | map without_flags) -o $(get_executable $2) $(get_objects) $2 $(get_links $1)
 }
 
 compile_tests()
@@ -156,7 +156,7 @@ compile_tests()
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable | map link
+	get_sources test | map get_output | filter is_executable | map link all
 }
 
 run()
@@ -181,7 +181,7 @@ test_recipe()
 package_recipe()
 {
 	test_recipe
-	get_sources src | map get_output | filter is_executable | map link
+	get_sources src | map get_output | filter is_executable | map link source_dependencies
 }
 
 run_recipe()
