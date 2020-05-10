@@ -11,6 +11,14 @@ map()
 	done
 }
 
+parmap()
+{
+	while read line; do
+		$@ $line &
+	done
+	wait
+}
+
 filter()
 {
 	while read line; do
@@ -87,7 +95,7 @@ compile()
 
 compile_source()
 {
-	get_sources src | map compile
+	get_sources src | parmap compile
 }
 
 compile_recipe()
@@ -136,7 +144,7 @@ link()
 
 compile_tests()
 {
-	get_sources test | map compile
+	get_sources test | parmap compile
 }
 
 link_tests()
