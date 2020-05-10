@@ -48,45 +48,14 @@ clean()
 	rm -rf build
 }
 
-is_installed()
-{
-	brew ls --versions $1
-}
-
-install()
-{
-	echo $1 | not is_installed | map brew install
-}
-
-install_jq()
-{
-	install jq
-	JQ=$(brew --prefix jq)/bin/jq
-}
-
 get_sources()
 {
 	find $1 -name *.c
 }
 
-get_prefix()
-{
-	brew --prefix $1
-}
-
-get_include()
-{
-	echo -I$1/include
-}
-
-get_includes()
-{
-	echo $1 | split | map get_prefix | map get_include
-}
-
 get_link()
 {
-	echo -L$(get_prefix $1)/lib -l$1
+	echo -l$1
 }
 
 get_links()
@@ -96,7 +65,7 @@ get_links()
 
 compile()
 {
-	verbose $1 -Wall -o build/$2/$3 $(get_includes $4) $(get_sources $2) $(get_links $4)
+	verbose $1 -Wall -o build/$2/$3 $(get_sources $2) $(get_links $4)
 }
 
 is_test_dependency()
@@ -106,7 +75,6 @@ is_test_dependency()
 
 build()
 {
-	echo $3 | $JQ -c .[] | $JQ -r .package | map install
 	mkdir -p build/src
 	echo $3 | $JQ -c .[] | not is_test_dependency | $JQ -r .package | collect | compile $1 src $2 $(cat)
 }
@@ -123,7 +91,7 @@ read_recipe_and_build()
 
 build_recipe()
 {
-	install_jq
+	JQ=$(which jq)
 	read_recipe_and_build "$(cat $1 | $JQ -c)"
 }
 
