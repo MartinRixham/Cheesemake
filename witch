@@ -60,23 +60,7 @@ get_link()
 
 get_links()
 {
-	echo $1 | split | map get_link
-}
-
-compile()
-{
-	verbose $1 -Wall -o build/$2/$3 $(get_sources $2) $(get_links $4)
-}
-
-is_test_dependency()
-{
-	echo $1 | $JQ .scope | grep test
-}
-
-build()
-{
-	mkdir -p build/src
-	echo $3 | $JQ -c .[] | not is_test_dependency | $JQ -r .package | collect | compile $1 src $2 $(cat)
+	echo $1 | $JQ -c .dependencies | $JQ -c .[] | $2 | $JQ -r .package | map get_link
 }
 
 get_compiler()
@@ -84,21 +68,52 @@ get_compiler()
 	echo $1 | $JQ -r .compiler
 }
 
-read_recipe_and_build()
+get_name()
 {
-	build $(get_compiler $1) $(echo $1 | $JQ -r .name) $(echo $1 | $JQ -c .dependencies)
+	echo $1 | $JQ -r .name
+}
+
+get_test()
+{
+	echo test
+}
+
+is_test_dependency()
+{
+	echo $1 | $JQ .scope | grep test
+}
+
+non_test_dependencies()
+{
+	not is_test_dependency
+}
+
+all()
+{
+	echo $(cat)
+}
+
+compile()
+{
+	verbose $(get_compiler $1) -Wall -o build/$2/$($3 $1) $(get_sources $2) $(get_links $1 $4)
+}
+
+compile_source()
+{
+	compile $1 src get_name non_test_dependencies
 }
 
 build_recipe()
 {
 	jq --version > /dev/null
 	JQ=$(which jq)
-	read_recipe_and_build "$(cat $1 | $JQ -c .)"
+	mkdir -p build/src
+	compile_source "$(cat $1 | $JQ -c .)"
 }
 
 compile_tests()
 {
-	compile $(get_compiler $1) test test $(echo $1 | $JQ -c .dependencies | $JQ -c .[] | $JQ -r .package | collect)
+	compile $1 test get_test all
 }
 
 test_recipe()
