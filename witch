@@ -81,7 +81,7 @@ build()
 
 get_compiler()
 {
-	echo $1 | $JQ -er .compiler
+	echo $1 | $JQ -r .compiler
 }
 
 read_recipe_and_build()
@@ -91,8 +91,9 @@ read_recipe_and_build()
 
 build_recipe()
 {
+	jq --version > /dev/null
 	JQ=$(which jq)
-	read_recipe_and_build "$(cat $1 | $JQ -c)"
+	read_recipe_and_build "$(cat $1 | $JQ -c .)"
 }
 
 compile_tests()
@@ -104,7 +105,7 @@ test_recipe()
 {
 	build_recipe $1
 	mkdir -p build/test
-	compile_tests $(cat $1 | $JQ -c)
+	compile_tests $(cat $1 | $JQ -c .)
 	build/test/test
 }
 
