@@ -57,17 +57,17 @@ get_link()
 
 get_links()
 {
-	cat $RECIPE | $JQ -c .dependencies | $JQ -c .[] | $1 | $JQ -r .package | map get_link
+	$JQ -c .dependencies $RECIPE | $JQ -c .[] | $1 | $JQ -r .package | map get_link
 }
 
 get_compiler()
 {
-	cat $RECIPE | $JQ -r .compiler
+	$JQ -r .compiler $RECIPE
 }
 
 get_name()
 {
-	cat $RECIPE | $JQ -r .name
+	$JQ -r .name $RECIPE 
 }
 
 get_test()
@@ -85,17 +85,27 @@ source_dependencies()
 	not is_test_dependency
 }
 
+output_file()
+{
+	echo build/$1.o
+}
+
+get_output()
+{
+	echo $1 | tr '.' ' ' | map output_file
+}
+
 compile()
 {
-	verbose $(get_compiler) -o build/$1/$($2) $(get_sources $1) $(get_links $3)
+	verbose $(get_compiler) -c -o $(get_output $1) $1 
 }
 
 compile_source()
 {
-	compile src get_name source_dependencies
+	get_sources src | map compile
 }
 
-build_recipe()
+compile_recipe()
 {
 	jq --version > /dev/null
 	JQ=$(which jq)
@@ -105,22 +115,22 @@ build_recipe()
 
 compile_tests()
 {
-	compile test get_test all
+	get_sources test | map compile
 }
 
 test_recipe()
 {
-	build_recipe
+	compile_recipe
 	mkdir -p build/test
 	compile_tests
-	build/test/test
+	#build/test/test
 }
 
 do_task()
 {
 	case $1 in
 		clean) clean;;
-		build) build_recipe;;
+		compile) compile_recipe;;
 		test) test_recipe;;
 	esac
 }
