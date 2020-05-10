@@ -178,12 +178,26 @@ test_recipe()
 	run_tests
 }
 
+package_recipe()
+{
+	test_recipe
+	get_sources src | map get_output | filter is_executable | map link
+}
+
+run_recipe()
+{
+	package_recipe
+	get_sources src | map get_output | filter is_executable | map get_executable | map run
+}
+
 do_task()
 {
 	case $1 in
 		clean) clean;;
 		compile) compile_recipe;;
 		test) test_recipe;;
+		package) package_recipe;;
+		run) run_recipe;;
 	esac
 }
 
