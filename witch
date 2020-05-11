@@ -106,25 +106,25 @@ compile_recipe()
 	compile_source
 }
 
+compile_tests()
+{
+	get_sources test | parmap compile
+}
+
 without_flags()
 {
 	echo $1
 }
 
-is_executable()
+link()
 {
-	objdump -d $1 | grep "<main>"
+	verbose $(get_compiler | map without_flags) -o $3 $4 $($1) $(get_links $2)
 }
 
 all_sources()
 {
 	get_sources src
 	get_sources test
-}
-
-get_objects()
-{
-	all_sources | map get_output | not is_executable
 }
 
 executable_file()
@@ -137,24 +137,29 @@ get_executable()
 	echo $1 | tr '.' ' ' | map executable_file
 }
 
-link()
+get_executable_and_object()
 {
-	verbose $(get_compiler | map without_flags) -o $($2 $3) $(get_objects) $3 $(get_links $1)
+	echo $(get_executable $1) $1
 }
 
-compile_tests()
+is_executable()
 {
-	get_sources test | parmap compile
+	objdump -d $1 | grep "<main>"
+}
+
+get_test_objects()
+{
+	all_sources | map get_output | not is_executable
 }
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable | map link all get_executable
+	get_sources test | map get_output | filter is_executable | map get_executable_and_object | map link get_test_objects all
 }
 
 run()
 {
-	$1
+	verbose $1
 }
 
 run_tests()
@@ -181,10 +186,15 @@ source_dependencies()
 	not is_test_dependency
 }
 
+get_source_objects()
+{
+	get_sources src | map get_output
+}
+
 package_recipe()
 {
 	test_recipe
-	get_sources src | map get_output | filter is_executable | map link source_dependencies get_name
+	link get_source_objects source_dependencies $(get_name) ''
 }
 
 run_recipe()
