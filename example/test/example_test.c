@@ -1,6 +1,6 @@
 #include <check.h>
 
-#include "code.h"
+#include "subd/code.h"
 
 START_TEST (test_name)
 {

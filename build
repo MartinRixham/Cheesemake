@@ -83,6 +83,11 @@ get_name()
 	$JQ -r .name $RECIPE | echo build/$(cat)
 }
 
+make_directory()
+{
+	mkdir -p build/$(dirname $1)
+}
+
 object_file()
 {
 	echo build/$1.o
@@ -95,6 +100,7 @@ get_output()
 
 compile()
 {
+	make_directory $2
 	verbose $(get_compiler) -c -o $(get_output $2) $($1) $2
 }
 
