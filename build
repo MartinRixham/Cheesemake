@@ -48,6 +48,11 @@ all()
 	echo $(cat)
 }
 
+blank()
+{
+	echo ''
+}
+
 clean()
 {
 	rm -rf build
@@ -90,12 +95,12 @@ get_output()
 
 compile()
 {
-	verbose $(get_compiler) -c -o $(get_output $1) $1 
+	verbose $(get_compiler) -c -o $(get_output $2) $($1) $2
 }
 
 compile_source()
 {
-	get_sources src | parmap compile
+	get_sources src | parmap compile blank
 }
 
 compile_recipe()
@@ -106,9 +111,14 @@ compile_recipe()
 	compile_source
 }
 
+include_source()
+{
+	echo -Isrc
+}
+
 compile_tests()
 {
-	get_sources test | parmap compile
+	get_sources test | parmap compile include_source
 }
 
 without_flags()
