@@ -4,7 +4,7 @@
 	"dependencies":
 		[
 			{
-				"package": "tinyxml2"
+				"package": "glib-2.0"
 			},
 			{
 				"package": "check",

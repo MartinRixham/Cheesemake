@@ -63,16 +63,6 @@ get_sources()
 	find $1 -name *.c
 }
 
-get_link()
-{
-	echo -l$@
-}
-
-get_links()
-{
-	$JQ -c .dependencies $RECIPE | $JQ -c .[] | $1 | $JQ -r .package | map get_link
-}
-
 get_compiler()
 {
 	$JQ -r .compiler $RECIPE
@@ -98,15 +88,35 @@ get_output()
 	echo $1 | tr '.' ' ' | map object_file
 }
 
+get_package()
+{
+	echo $(pkg-config $1 $2)
+}
+
+get_packages()
+{
+	$JQ -c .dependencies $RECIPE | $JQ -c .[] | $2 | $JQ -r .package | map get_package $1
+}
+
+is_test_dependency()
+{
+	echo $@ | $JQ .scope | grep test
+}
+
+source_dependencies()
+{
+	not is_test_dependency
+}
+
 compile()
 {
-	make_directory $2
-	verbose $(get_compiler) -c -o $(get_output $2) $($1) $2
+	make_directory $3
+	verbose $(get_compiler) -c -o $(get_output $3) $($1) $(get_packages --cflags $2) $3
 }
 
 compile_source()
 {
-	get_sources src | parmap compile blank
+	get_sources src | parmap compile blank source_dependencies
 }
 
 compile_recipe()
@@ -124,7 +134,7 @@ include_source()
 
 compile_tests()
 {
-	get_sources test | parmap compile include_source
+	get_sources test | parmap compile include_source all
 }
 
 without_flags()
@@ -134,7 +144,7 @@ without_flags()
 
 link()
 {
-	verbose $(get_compiler | map without_flags) -o $3 $4 $($1) $(get_links $2)
+	verbose $(get_compiler | map without_flags) -o $3 $4 $($1) $(get_packages --libs $2)
 }
 
 all_sources()
@@ -190,16 +200,6 @@ test_recipe()
 	compile_tests
 	link_tests
 	run_tests
-}
-
-is_test_dependency()
-{
-	echo $@ | $JQ .scope | grep test
-}
-
-source_dependencies()
-{
-	not is_test_dependency
 }
 
 get_source_objects()
