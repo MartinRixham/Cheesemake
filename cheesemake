@@ -4,6 +4,8 @@ set -Eeuo pipefail
 
 RECIPE=recipe.json
 
+DIR=$(dirname $0)
+
 map()
 {
 	while read line; do
@@ -213,9 +215,30 @@ package_recipe()
 	link get_source_objects source_dependencies $(get_name) ''
 }
 
-run_recipe()
+is_validation()
+{
+	echo $@ | $JQ .phase | grep validate	
+}
+
+run_plugin()
+{
+	source $DIR/$1.chevre $2
+}
+
+get_plugin_and_config()
+{
+	echo $(echo $@ | $JQ -r .name) $(echo $@ | $JQ -c .config)
+}
+
+validate_recipe()
 {
 	package_recipe
+    $JQ -c .plugins $RECIPE | $JQ -c .[] | filter is_validation | map get_plugin_and_config | map run_plugin
+}
+
+run_recipe()
+{
+	validate_recipe
 	get_name | map run
 }
 
@@ -226,6 +249,7 @@ do_task()
 		compile) compile_recipe;;
 		test) test_recipe;;
 		package) package_recipe;;
+		validate) validate_recipe;;
 		run) run_recipe;;
 	esac
 }

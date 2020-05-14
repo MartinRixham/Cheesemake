@@ -10,5 +10,16 @@
 				"package": "check",
 				"scope": "test"
 			}
+		],
+	"plugins":
+		[
+			{
+				"name": "valgrind",
+				"phase": "validate",
+				"config":
+					{
+						"args": "wibble"
+					}
+			}
 		]
 }
