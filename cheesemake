@@ -60,9 +60,9 @@ clean()
 	rm -rf build
 }
 
-run_plugin()
+is_null()
 {
-	source $DIR/$1.chevre $2
+	echo $1 | grep null
 }
 
 get_plugin_and_config()
@@ -75,11 +75,21 @@ is_validation()
 	echo $@ | $JQ .phase | grep validate
 }
 
+run_plugin()
+{
+	source $DIR/$1.chevre $2
+}
+
+run_plugins()
+{
+    $JQ -c .plugins $RECIPE | not is_null | $JQ -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
+}
+
 validate_recipe()
 {
 	jq --version > /dev/null
 	JQ=$(which jq)
-    $JQ -c .plugins $RECIPE | $JQ -c .[] | filter is_validation | map get_plugin_and_config | map run_plugin
+	$(run_plugins is_validation)
 }
 
 get_sources()
@@ -254,7 +264,7 @@ is_verification()
 verify_recipe()
 {
 	package_recipe
-    $JQ -c .plugins $RECIPE | $JQ -c .[] | filter is_verification | map get_plugin_and_config | map run_plugin
+    $(run_plugins is_verification)
 }
 
 run_recipe()
