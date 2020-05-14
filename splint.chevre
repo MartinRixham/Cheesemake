@@ -1,0 +1,3 @@
+#! /bin/bash
+
+verbose splint -Isrc $(get_includes all) $(all_sources)

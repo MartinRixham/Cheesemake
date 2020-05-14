@@ -60,6 +60,28 @@ clean()
 	rm -rf build
 }
 
+run_plugin()
+{
+	source $DIR/$1.chevre $2
+}
+
+get_plugin_and_config()
+{
+	echo $(echo $@ | $JQ -r .name) $(echo $@ | $JQ -c .config)
+}
+
+is_validation()
+{
+	echo $@ | $JQ .phase | grep validate
+}
+
+validate_recipe()
+{
+	jq --version > /dev/null
+	JQ=$(which jq)
+    $JQ -c .plugins $RECIPE | $JQ -c .[] | filter is_validation | map get_plugin_and_config | map run_plugin
+}
+
 get_sources()
 {
 	find $1 -name *.c
@@ -110,10 +132,15 @@ source_dependencies()
 	not is_test_dependency
 }
 
+get_includes()
+{
+	echo $(get_packages --cflags-only-I $1)
+}
+
 compile()
 {
 	make_directory $3
-	verbose $(get_compiler) -c -o $(get_output $3) $($1) $(get_packages --cflags $2) $3
+	verbose $(get_compiler) -c -o $(get_output $3) $($1) $(get_includes $2) $3
 }
 
 compile_source()
@@ -123,8 +150,7 @@ compile_source()
 
 compile_recipe()
 {
-	jq --version > /dev/null
-	JQ=$(which jq)
+	validate_recipe
 	mkdir -p build/src
 	compile_source
 }
@@ -144,9 +170,14 @@ without_flags()
 	echo $1
 }
 
+get_links()
+{
+	echo $(get_packages --libs-only-l $1)
+}
+
 link()
 {
-	verbose $(get_compiler | map without_flags) -o $3 $4 $($1) $(get_packages --libs $2)
+	verbose $(get_compiler | map without_flags) -o $3 $4 $($1) $(get_links $2)
 }
 
 all_sources()
@@ -215,30 +246,20 @@ package_recipe()
 	link get_source_objects source_dependencies $(get_name) ''
 }
 
-is_validation()
+is_verification()
 {
-	echo $@ | $JQ .phase | grep validate	
+	echo $@ | $JQ .phase | grep verify
 }
 
-run_plugin()
-{
-	source $DIR/$1.chevre $2
-}
-
-get_plugin_and_config()
-{
-	echo $(echo $@ | $JQ -r .name) $(echo $@ | $JQ -c .config)
-}
-
-validate_recipe()
+verify_recipe()
 {
 	package_recipe
-    $JQ -c .plugins $RECIPE | $JQ -c .[] | filter is_validation | map get_plugin_and_config | map run_plugin
+    $JQ -c .plugins $RECIPE | $JQ -c .[] | filter is_verification | map get_plugin_and_config | map run_plugin
 }
 
 run_recipe()
 {
-	validate_recipe
+	verify_recipe
 	get_name | map run
 }
 
@@ -246,10 +267,11 @@ do_task()
 {
 	case $1 in
 		clean) clean;;
+		validate) validate_recipe;;
 		compile) compile_recipe;;
 		test) test_recipe;;
 		package) package_recipe;;
-		validate) validate_recipe;;
+		verify) verify_recipe;;
 		run) run_recipe;;
 	esac
 }

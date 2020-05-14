@@ -1,6 +1,6 @@
 {
 	"name": "example",
-	"compiler": "gcc -Wall",
+	"compiler": "gcc -g -Wall",
 	"dependencies":
 		[
 			{
@@ -15,7 +15,7 @@
 		[
 			{
 				"name": "valgrind",
-				"phase": "validate",
+				"phase": "verify",
 				"config":
 					{
 						"args": "wibble"
