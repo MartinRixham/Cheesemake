@@ -89,7 +89,7 @@ validate_recipe()
 {
 	jq --version > /dev/null
 	JQ=$(which jq)
-	$(run_plugins is_validation)
+	run_plugins is_validation
 }
 
 get_sources()
@@ -129,7 +129,7 @@ get_package()
 
 get_packages()
 {
-	$JQ -c .dependencies $RECIPE | $JQ -c .[] | $2 | $JQ -r .package | map get_package $1
+	$JQ -c .dependencies $RECIPE | not is_null | $JQ -c .[] | $2 | $JQ -r .package | map get_package $1
 }
 
 is_test_dependency()
@@ -264,7 +264,7 @@ is_verification()
 verify_recipe()
 {
 	package_recipe
-    $(run_plugins is_verification)
+    run_plugins is_verification
 }
 
 run_recipe()
