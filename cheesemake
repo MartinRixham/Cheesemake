@@ -279,6 +279,21 @@ run_recipe()
 	get_name | map run
 }
 
+print_usage()
+{
+	echo "usage: cheesemake [clean] [<phase>]
+
+Cheesemake runs ALL phases in order up to the one specified.
+
+Phases:
+ validate		Run plugins such as static analysis tools.
+ compile		Compile sources in the src directory and output them to build/src.
+ test			Compile and run tests in the test directory.
+ package		Create an executable called build/<recipe name>.
+ verify			Run plugins such as dynamic analysis tools.
+ run			Run build/<recipe name>."
+}
+
 do_task()
 {
 	case $1 in
@@ -289,9 +304,14 @@ do_task()
 		package) package_recipe;;
 		verify) verify_recipe;;
 		run) run_recipe;;
+		*) print_usage;;
 	esac
 }
 
 for task in $@; do
 	do_task $task
 done
+
+if [ $# -eq 0 ]; then
+	print_usage
+fi
