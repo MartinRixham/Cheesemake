@@ -15,10 +15,16 @@ map()
 
 parmap()
 {
+	local pids=()
+
 	while read line; do
 		$@ $line &
+		pids+=($!)
 	done
-	wait
+
+	for pid in ${pids[*]}; do
+		wait $pid
+	done
 }
 
 filter()
