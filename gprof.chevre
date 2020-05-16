@@ -14,7 +14,7 @@ local links=$(get_links source_dependencies)
 mkdir -p build/gprof/build
 cp -r src build/gprof
 cd build/gprof
-$compiler -pg -o $name $includes $links $(get_sources src)
-$name > /dev/null
+$compiler -pg -o $name $includes $links $(get_sources src) &> /dev/null
+$name &> /dev/null
 write_verbose "gprof $(echo $@ | $JQ -r .options | not is_null) $name gmon.out" profile$(date +%s).txt
 cd ../..
