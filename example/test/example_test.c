@@ -6,6 +6,7 @@ START_TEST (test_name)
 {
 	ck_assert_str_eq(get_code(), "thingy");
 }
+END_TEST
 
 Suite *money_suite(void)
 {
