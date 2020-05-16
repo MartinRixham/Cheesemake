@@ -1,0 +1,20 @@
+#! /bin/bash
+
+write_verbose()
+{
+	echo "$1 > build/gprof/$2"
+	$1 > $2	
+}
+
+local name=$(get_name)
+local compiler=$(get_compiler | map without_flags)
+local includes=$(get_includes source_dependencies)
+local links=$(get_links source_dependencies)
+
+mkdir -p build/gprof/build
+cp -r src build/gprof
+cd build/gprof
+$compiler -pg -o $name $includes $links $(get_sources src)
+$name > /dev/null
+write_verbose "gprof $(echo $@ | $JQ -r .options | not is_null) $name gmon.out" profile$(date +%s).txt
+cd ../..

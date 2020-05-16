@@ -20,6 +20,10 @@
 					{
 						"args": "wibble"
 					}
+			},
+			{
+				"name": "gprof",
+				"phase": "verify"
 			}
 		]
 }
