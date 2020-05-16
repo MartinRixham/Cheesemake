@@ -22,7 +22,7 @@ parmap()
 		pids+=($!)
 	done
 
-	for pid in ${pids[*]}; do
+	for pid in ${pids[@]}; do
 		wait $pid
 	done
 }
@@ -30,7 +30,7 @@ parmap()
 filter()
 {
 	while read line; do
-		if $($@ $line > /dev/null); then
+		if $($@ $line &> /dev/null); then
 			echo $line
 		fi
 	done
@@ -39,7 +39,7 @@ filter()
 not()
 {
 	while read line; do
-		if ! $($@ $line > /dev/null); then
+		if ! $($@ $line &> /dev/null); then
 			echo $line
 		fi
 	done
@@ -186,9 +186,14 @@ without_flags()
 	echo $1
 }
 
+is_valid_flag()
+{
+	echo 'int main(void) {return 0;}' | $(get_compiler | map without_flags) -x c -E - $1
+}
+
 get_links()
 {
-	echo $(get_packages --libs-only-l $1)
+	echo $(get_packages --libs $1 | tr ' ' '\n' | filter is_valid_flag)
 }
 
 link()
