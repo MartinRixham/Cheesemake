@@ -6,6 +6,8 @@ RECIPE=recipe.json
 
 DIR=$(dirname $(readlink -e $0))
 
+COMPILER=$(jq -r .compiler $RECIPE)
+
 map()
 {
 	while read line; do
@@ -73,12 +75,12 @@ is_null()
 
 get_plugin_and_config()
 {
-	echo $(echo $@ | $JQ -r .name) $(echo $@ | $JQ -c .config)
+	echo $(echo $@ | jq -r .name) $(echo $@ | jq -c .config)
 }
 
 is_validation()
 {
-	echo $@ | $JQ .phase | grep validate
+	echo $@ | jq .phase | grep validate
 }
 
 run_plugin()
@@ -88,13 +90,11 @@ run_plugin()
 
 run_plugins()
 {
-    $JQ -c .plugins $RECIPE | not is_null | $JQ -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
+    jq -c .plugins $RECIPE | not is_null | jq -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
 }
 
 validate_recipe()
 {
-	jq --version > /dev/null
-	JQ=$(which jq)
 	run_plugins is_validation
 }
 
@@ -103,14 +103,9 @@ get_sources()
 	find $1 -name *.c*
 }
 
-get_compiler()
-{
-	$JQ -r .compiler $RECIPE
-}
-
 get_name()
 {
-	$JQ -r .name $RECIPE | echo build/$(cat)
+	jq -r .name $RECIPE | echo build/$(cat)
 }
 
 make_directory()
@@ -135,12 +130,12 @@ get_package()
 
 get_packages()
 {
-	$JQ -c .dependencies $RECIPE | not is_null | $JQ -c .[] | $2 | $JQ -r .package | map get_package $1
+	jq -c .dependencies $RECIPE | not is_null | jq -c .[] | $2 | jq -r .package | map get_package $1
 }
 
 is_test_dependency()
 {
-	echo $@ | $JQ .scope | grep test
+	echo $@ | jq .scope | grep test
 }
 
 source_dependencies()
@@ -156,7 +151,7 @@ get_includes()
 compile()
 {
 	make_directory $3
-	verbose $(get_compiler) -c -o $(get_output $3) $($1) $(get_includes $2) $3
+	verbose $COMPILER -c -o $(get_output $3) $($1) $(get_includes $2) $3
 }
 
 compile_source()
@@ -188,7 +183,7 @@ without_flags()
 
 is_valid_flag()
 {
-	echo "int main(void) {return 0;}" | $(get_compiler | map without_flags) -x c -E - $1
+	echo "int main(void) {return 0;}" | $(echo $COMPILER | map without_flags) -x c -E - $1
 }
 
 get_links()
@@ -198,7 +193,7 @@ get_links()
 
 link()
 {
-	verbose $(get_compiler | map without_flags) -o $3 $4 $($1) $(get_links $2)
+	verbose $(echo $COMPILER | map without_flags) -o $3 $4 $($1) $(get_links $2)
 }
 
 all_sources()
@@ -269,7 +264,7 @@ package_recipe()
 
 is_verification()
 {
-	echo $@ | $JQ .phase | grep verify
+	echo $@ | jq .phase | grep verify
 }
 
 verify_recipe()
