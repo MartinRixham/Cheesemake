@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 RECIPE=recipe.json
 
-DIR=$(dirname $0)
+DIR=$(dirname $(readlink -e $0))
 
 map()
 {
