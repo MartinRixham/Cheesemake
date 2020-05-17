@@ -75,7 +75,7 @@ clean()
 
 is_null()
 {
-	echo $1 | grep null
+	echo $1 | grep -q null
 }
 
 get_plugin_and_config()
@@ -85,7 +85,7 @@ get_plugin_and_config()
 
 is_validation()
 {
-	echo $@ | jq .phase | grep validate
+	echo $@ | jq .phase | grep -q validate
 }
 
 run_plugin()
@@ -110,19 +110,19 @@ get_sources()
 
 is_shared()
 {
-	jq -r .packaging $RECIPE | grep shared
+	jq -r .packaging $RECIPE | grep -q shared
 }
 
 is_archive()
 {
-	jq -r .packaging $RECIPE | grep archive
+	jq -r .packaging $RECIPE | grep -q archive
 }
 
 output_name()
 {
-	if is_shared &> /dev/null; then
+	if is_shared; then
 		echo lib$1.so
-	elif is_archive &> /dev/null; then
+	elif is_archive; then
 		echo lib$1.a
 	else
 		echo $1
@@ -181,12 +181,12 @@ get_packages()
 
 is_test_dependency()
 {
-	echo $@ | jq .scope | grep test
+	echo $@ | jq .scope | grep -q test
 }
 
 is_static_dependency()
 {
-	echo $@ | jq .scope | grep static
+	echo $@ | jq .scope | grep -q static
 }
 
 source_dependencies()
@@ -201,7 +201,7 @@ get_includes()
 
 compilation_flag()
 {
-	if is_shared $> /dev/null; then
+	if is_shared; then
 		echo -fPIC
 	fi
 }
@@ -298,7 +298,7 @@ output_flag()
 {
 	echo $1
 
-	if is_shared $> /dev/null; then
+	if is_shared; then
 		echo -shared
 	fi
 }
@@ -331,7 +331,7 @@ get_executable_and_object()
 
 is_executable()
 {
-	objdump -d $1 | grep -m 1 "<main>"
+	objdump -d $1 | grep -q "<main>"
 }
 
 get_test_objects()
@@ -376,7 +376,7 @@ archive()
 package_recipe()
 {
 	test_recipe
-	if is_archive &> /dev/null; then
+	if is_archive; then
 		archive
 	else
 		link output_flag get_source_objects source_dependencies $(get_name) ''
@@ -385,13 +385,18 @@ package_recipe()
 
 is_verification()
 {
-	echo $@ | jq .phase | grep verify
+	echo $@ | jq .phase | grep -q verify
 }
 
 verify_recipe()
 {
 	package_recipe
-    run_plugins is_verification
+	if is_shared || is_archive; then
+		echo "Library $(get_name) is not executable."
+		exit 0
+	else
+		run_plugins is_verification
+	fi
 }
 
 run_recipe()
@@ -410,7 +415,7 @@ Phases:
  validate		Run plugins such as static analysis tools.
  compile		Compile sources in the src directory and output them to build/src.
  test			Compile and run tests in the test directory.
- package		Create an executable called build/<recipe name>.
+ package		Create a binary called build/<recipe name>.
  verify			Run plugins such as dynamic analysis tools.
  run			Run build/<recipe name>."
 }
