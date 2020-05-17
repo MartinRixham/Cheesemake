@@ -270,7 +270,7 @@ without_flags()
 
 is_valid_flag()
 {
-	echo "int main(void) {return 0;}" | $(echo $COMPILER | map without_flags) -x c -E - $1
+	echo "int main(void) {return 0;}" | $(without_flags $COMPILER) -x c -E - $1
 }
 
 filter_valid_flags()
