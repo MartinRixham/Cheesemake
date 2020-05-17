@@ -113,10 +113,17 @@ is_shared()
 	jq -r .packaging $RECIPE | grep shared
 }
 
+is_archive()
+{
+	jq -r .packaging $RECIPE | grep archive
+}
+
 output_name()
 {
 	if is_shared &> /dev/null; then
 		echo lib$1.so
+	elif is_archive &> /dev/null; then
+		echo lib$1.a
 	else
 		echo $1
 	fi
@@ -361,10 +368,19 @@ get_source_objects()
 	get_sources src | map get_output
 }
 
+archive()
+{
+	verbose ar rcs $(get_name) $(get_source_objects)
+}
+
 package_recipe()
 {
 	test_recipe
-	link output_flag get_source_objects source_dependencies $(get_name) ''
+	if is_archive &> /dev/null; then
+		archive
+	else
+		link output_flag get_source_objects source_dependencies $(get_name) ''
+	fi
 }
 
 is_verification()
