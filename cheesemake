@@ -63,6 +63,11 @@ blank()
 	echo ''
 }
 
+non_empty()
+{
+	sed '/^$/d'
+}
+
 clean()
 {
 	rm -rf build
@@ -123,19 +128,44 @@ get_output()
 	echo $1 | tr '.' ' ' | map object_file
 }
 
+library_packages()
+{
+	echo --libs
+}
+
+static_library_packages()
+{
+	echo --static --libs
+}
+
+include_packages()
+{
+	echo --cflags-only-I 
+}
+
+configure_package()
+{
+	echo $(pkg-config $($1) $2)
+}
+
 get_package()
 {
-	echo $(pkg-config $1 $2)
+	jq -r .package | map configure_package $1
 }
 
 get_packages()
 {
-	jq -c .dependencies $RECIPE | not is_null | jq -c .[] | $2 | jq -r .package | map get_package $1
+	jq -c .dependencies $RECIPE | not is_null | jq -c .[]
 }
 
 is_test_dependency()
 {
 	echo $@ | jq .scope | grep test
+}
+
+is_static_dependency()
+{
+	echo $@ | jq .scope | grep static
 }
 
 source_dependencies()
@@ -145,7 +175,7 @@ source_dependencies()
 
 get_includes()
 {
-	echo $(get_packages --cflags-only-I $1)
+	echo $(get_packages | $1 | get_package include_packages)
 }
 
 compile()
@@ -171,7 +201,7 @@ source_file()
 
 filter_old_hashes()
 {
-	cat build/$1/hashes | filter has_object > build/$1/oldhashes
+	cat build/$1/hashes 2> /dev/null | filter has_object > build/$1/oldhashes
 }
 
 get_missing_sources()
@@ -215,14 +245,30 @@ is_valid_flag()
 	echo "int main(void) {return 0;}" | $(echo $COMPILER | map without_flags) -x c -E - $1
 }
 
+filter_valid_flags()
+{
+	tr ' ' '\n' | filter is_valid_flag
+}
+
 get_links()
 {
-	echo $(get_packages --libs $1 | tr ' ' '\n' | filter is_valid_flag)
+	echo $(get_packages | not is_static_dependency | $1 | get_package library_packages | filter_valid_flags)
+}
+
+get_static_links()
+{
+	echo $(get_packages | filter is_static_dependency | $1 | get_package static_library_packages | filter_valid_flags)
+}
+
+link_statically()
+{
+	echo -Wl,-Bstatic
+	echo $@
 }
 
 link()
 {
-	verbose $(echo $COMPILER | map without_flags) -o $3 $4 $($1) $(get_links $2)
+	verbose $(echo $COMPILER | map without_flags) -o $3 $4 $($1) $(get_links $2) $(get_static_links $2 | non_empty | map link_statically)
 }
 
 all_sources()
