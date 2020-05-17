@@ -397,7 +397,7 @@ verify_recipe()
 run_recipe()
 {
 	verify_recipe
-	get_name | map run
+	verbose $(get_name)
 }
 
 print_usage()
