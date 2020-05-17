@@ -108,9 +108,23 @@ get_sources()
 	find $1 -name *.c*
 }
 
+is_shared()
+{
+	jq -r .packaging $RECIPE | grep shared
+}
+
+output_name()
+{
+	if is_shared &> /dev/null; then
+		echo lib$1.so
+	else
+		echo $1
+	fi
+}
+
 get_name()
 {
-	jq -r .name $RECIPE | echo build/$(cat)
+	jq -r .name $RECIPE | map output_name | echo build/$(cat)
 }
 
 make_directory()
@@ -178,10 +192,17 @@ get_includes()
 	echo $(get_packages | $1 | get_package include_packages)
 }
 
+compilation_flag()
+{
+	if is_shared $> /dev/null; then
+		echo -fPIC
+	fi
+}
+
 compile()
 {
-	make_directory $3
-	verbose $COMPILER -c -o $(get_output $3) $($1) $(get_includes $2) $3
+	make_directory $4
+	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) $(get_includes $3) $4
 }
 
 has_object()
@@ -212,7 +233,7 @@ get_missing_sources()
 compile_source()
 {
 	filter_old_hashes src
-	get_missing_sources src | parmap compile blank source_dependencies
+	get_missing_sources src | parmap compile compilation_flag blank source_dependencies
 	rm build/src/oldhashes
 }
 
@@ -231,7 +252,7 @@ include_source()
 compile_tests()
 {
 	filter_old_hashes test
-	get_missing_sources test | parmap compile include_source all
+	get_missing_sources test | parmap compile blank include_source all
 	rm build/test/oldhashes
 }
 
@@ -266,9 +287,18 @@ link_statically()
 	echo $@
 }
 
+output_flag()
+{
+	echo $1
+
+	if is_shared $> /dev/null; then
+		echo -shared
+	fi
+}
+
 link()
 {
-	verbose $(echo $COMPILER | map without_flags) -o $3 $4 $($1) $(get_links $2) $(get_static_links $2 | non_empty | map link_statically)
+	verbose $(echo $COMPILER | map $1) -o $4 $5 $($2) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
 }
 
 all_sources()
@@ -304,7 +334,7 @@ get_test_objects()
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable | map get_executable_and_object | map link get_test_objects all
+	get_sources test | map get_output | filter is_executable | map get_executable_and_object | map link without_flags get_test_objects all
 }
 
 run()
@@ -334,7 +364,7 @@ get_source_objects()
 package_recipe()
 {
 	test_recipe
-	link get_source_objects source_dependencies $(get_name) ''
+	link output_flag get_source_objects source_dependencies $(get_name) ''
 }
 
 is_verification()
