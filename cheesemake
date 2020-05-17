@@ -154,9 +154,36 @@ compile()
 	verbose $COMPILER -c -o $(get_output $3) $($1) $(get_includes $2) $3
 }
 
+has_object()
+{
+	[ -f $(get_output $2) ]
+}
+
+new_hash()
+{
+	echo $1 | grep '<'
+}
+
+source_file()
+{
+	echo $3
+}
+
+filter_old_hashes()
+{
+	cat build/$1/hashes | filter has_object > build/$1/oldhashes
+}
+
+get_missing_sources()
+{
+	get_sources $1 | map sha1sum | tee build/$1/hashes | diff -N -b - build/$1/oldhashes | filter new_hash | map source_file
+}
+
 compile_source()
 {
-	get_sources src | parmap compile blank source_dependencies
+	filter_old_hashes src
+	get_missing_sources src | parmap compile blank source_dependencies
+	rm build/src/oldhashes
 }
 
 compile_recipe()
@@ -173,7 +200,9 @@ include_source()
 
 compile_tests()
 {
-	get_sources test | parmap compile include_source all
+	filter_old_hashes test
+	get_missing_sources test | parmap compile include_source all
+	rm build/test/oldhashes
 }
 
 without_flags()
