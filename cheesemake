@@ -32,7 +32,7 @@ parmap()
 filter()
 {
 	while read line; do
-		if $($@ $line &> /dev/null); then
+		if $@ $line &> /dev/null; then
 			echo $line
 		fi
 	done
@@ -41,7 +41,7 @@ filter()
 not()
 {
 	while read line; do
-		if ! $($@ $line &> /dev/null); then
+		if ! $@ $line &> /dev/null; then
 			echo $line
 		fi
 	done
