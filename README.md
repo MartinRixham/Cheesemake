@@ -6,3 +6,4 @@ Dependencies:
 
 * Bash
 * jq
+* OpenSSL

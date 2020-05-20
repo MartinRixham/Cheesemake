@@ -1,10 +1,10 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 set -Eeu
 
 RECIPE=recipe.json
 
-DIR=$(dirname $(readlink -e $0))
+DIR=$(dirname $(readlink -f $0))
 
 COMPILER=$(jq -r .compiler $RECIPE)
 
@@ -264,7 +264,7 @@ read_file()
 
 generate_hash()
 {
-	echo $1 | map with_headers | map read_file | echo $1 $(cat | sha1sum)
+	echo $1 | map with_headers | map read_file | echo $1 $(cat | openssl dgst)
 }
 
 get_missing_sources()
