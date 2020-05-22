@@ -98,14 +98,21 @@ run_plugins()
     jq -c .plugins $RECIPE | not is_null | jq -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
 }
 
-validate_recipe()
-{
-	run_plugins is_validation
-}
-
 get_sources()
 {
 	find $1 -name *.c*
+}
+
+all_sources()
+{
+	get_sources src
+	get_sources test
+}
+
+validate_recipe()
+{
+	all_sources > /dev/null
+	run_plugins is_validation
 }
 
 is_shared()
@@ -351,12 +358,6 @@ output_flag()
 link()
 {
 	verbose $(echo $COMPILER | map $1) -o $4 $5 $($2) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
-}
-
-all_sources()
-{
-	get_sources src
-	get_sources test
 }
 
 executable_file()
