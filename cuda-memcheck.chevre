@@ -1,0 +1,10 @@
+#! /bin/bash
+
+privileged()
+{
+	if ! echo $@ | jq -r .privileged | grep -q "null\|false"; then
+		echo sudo
+	fi
+}
+
+verbose $(privileged $@) cuda-memcheck $(echo $@ | jq -r .options | not is_null) $(get_name) $(echo $@ | jq -r .args | not is_null)
