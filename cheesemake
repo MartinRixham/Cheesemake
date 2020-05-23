@@ -434,6 +434,12 @@ is_verification()
 	echo $@ | jq .phase | grep -q verify
 }
 
+read_hashes()
+{
+	cat build/src/hashes
+	cat build/test/hashes
+}
+
 verify_recipe()
 {
 	package_recipe
@@ -442,6 +448,7 @@ verify_recipe()
 		exit 0
 	else
 		run_plugins is_verification
+		read_hashes | openssl dgst > build/hash
 	fi
 }
 
