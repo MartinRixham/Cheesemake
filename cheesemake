@@ -196,6 +196,11 @@ source_dependencies()
 	not is_test_dependency
 }
 
+base_directory()
+{
+	echo $1
+}
+
 get_includes()
 {
 	echo $(get_packages | $1 | get_package include_packages)
@@ -210,6 +215,9 @@ compile()
 {
 	make_directory $4
 	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) $(get_includes $3) $4
+	if [ $? -eq 0 ]; then
+		generate_hash $4 >> build/hashes
+	fi
 }
 
 compilation_flag()
@@ -276,7 +284,7 @@ generate_hash()
 
 get_missing_sources()
 {
-	get_sources $1 | map generate_hash | tee build/$1/hashes | diff -N -b - build/$1/oldhashes | filter new_hash | map source_file
+	get_sources $1 | map generate_hash | diff -N -b - build/hashes | filter new_hash | map source_file
 }
 
 has_object()
@@ -286,14 +294,14 @@ has_object()
 
 filter_old_hashes()
 {
-	cat build/$1/hashes 2> /dev/null | filter has_object > build/$1/oldhashes
+	cat build/hashes 2> /dev/null | filter has_object > build/oldhashes
+	mv build/oldhashes build/hashes
 }
 
 compile_source()
 {
-	filter_old_hashes src
+	filter_old_hashes
 	get_missing_sources src | parmap compile compilation_flag blank source_dependencies
-	rm build/src/oldhashes
 }
 
 compile_recipe()
@@ -310,9 +318,7 @@ include_source()
 
 compile_tests()
 {
-	filter_old_hashes test
 	get_missing_sources test | parmap compile blank include_source all
-	rm build/test/oldhashes
 }
 
 without_flags()
@@ -434,12 +440,6 @@ is_verification()
 	echo $@ | jq .phase | grep -q verify
 }
 
-read_hashes()
-{
-	cat build/src/hashes
-	cat build/test/hashes
-}
-
 verify_recipe()
 {
 	package_recipe
@@ -448,7 +448,6 @@ verify_recipe()
 		exit 0
 	else
 		run_plugins is_verification
-		read_hashes | openssl dgst > build/hash
 	fi
 }
 
