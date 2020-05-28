@@ -215,6 +215,7 @@ compile()
 {
 	make_directory $4
 	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) $(get_includes $3) $4
+
 	if [ $? -eq 0 ]; then
 		generate_hash $4 >> build/hashes
 	fi
@@ -284,7 +285,7 @@ generate_hash()
 
 get_missing_sources()
 {
-	get_sources $1 | map generate_hash | diff -N -b - build/hashes | filter new_hash | map source_file
+	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map source_file
 }
 
 has_object()
