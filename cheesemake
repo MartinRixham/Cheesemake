@@ -170,6 +170,7 @@ remove_hash()
 {
 	cat build/hashes | grep -v $1 > build/oldhashes || true
 	mv build/oldhashes build/hashes || true
+	echo $1
 }
 
 configure_package()
@@ -215,12 +216,11 @@ get_includes()
 make_directory()
 {
 	mkdir -p build/$(dirname $1)
+	echo $1
 }
 
 compile()
 {
-	make_directory $4
-	remove_hash $4
 	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) $(get_includes $3) $4
 
 	if [ $? -eq 0 ]; then
@@ -309,7 +309,7 @@ filter_old_hashes()
 compile_source()
 {
 	filter_old_hashes
-	get_missing_sources src | parmap compile compilation_flag blank source_dependencies
+	get_missing_sources src | map remove_hash | map make_directory | parmap compile compilation_flag blank source_dependencies
 }
 
 compile_recipe()
@@ -326,7 +326,7 @@ include_source()
 
 compile_tests()
 {
-	get_missing_sources test | parmap compile blank include_source all
+	get_missing_sources test | map remove_hash | map make_directory | parmap compile blank include_source all
 }
 
 without_flags()
