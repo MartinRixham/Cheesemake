@@ -166,6 +166,12 @@ include_packages()
 	echo --cflags-only-I 
 }
 
+remove_hash()
+{
+	cat build/hashes | grep -v $1 > build/oldhashes || true
+	mv build/oldhashes build/hashes || true
+}
+
 configure_package()
 {
 	echo $(pkg-config $($1) $2)
@@ -214,6 +220,7 @@ make_directory()
 compile()
 {
 	make_directory $4
+	remove_hash $4
 	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) $(get_includes $3) $4
 
 	if [ $? -eq 0 ]; then
