@@ -459,10 +459,15 @@ verify_recipe()
 	fi
 }
 
+get_arguments()
+{
+	jq -r .args $RECIPE | not is_null
+}
+
 run_recipe()
 {
 	verify_recipe
-	verbose $(get_name)
+	verbose $(get_name) $(get_arguments)
 }
 
 print_usage()

@@ -1,6 +1,7 @@
 {
 	"name": "example",
 	"compiler": "gcc -g -Wall",
+	"args": "--no-worries",
 	"packaging": "executable",
 	"dependencies":
 		[
