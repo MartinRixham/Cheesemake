@@ -128,11 +128,11 @@ is_archive()
 output_name()
 {
 	if is_shared; then
-		echo lib$1.so
+		echo lib/lib$1.so
 	elif is_archive; then
-		echo lib$1.a
+		echo lib/lib$1.a
 	else
-		echo $1
+		echo bin/$1
 	fi
 }
 
@@ -436,6 +436,9 @@ archive()
 package_recipe()
 {
 	test_recipe
+	mkdir -p build/bin
+	mkdir -p build/lib
+	mkdir -p build/include
 	if is_archive; then
 		archive
 	else
