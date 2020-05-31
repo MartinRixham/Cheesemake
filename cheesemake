@@ -175,7 +175,7 @@ remove_hash()
 
 configure_package()
 {
-	echo $(pkg-config $($1) $2)
+	pkg-config $($1) $2
 }
 
 get_package()
@@ -210,7 +210,7 @@ base_directory()
 
 get_includes()
 {
-	echo $(get_packages | $1 | get_package include_packages)
+	get_packages | $1 | get_package include_packages
 }
 
 make_directory()
@@ -346,12 +346,12 @@ filter_valid_flags()
 
 get_links()
 {
-	echo $(get_packages | not is_static_dependency | $1 | get_package library_packages | filter_valid_flags)
+	get_packages | not is_static_dependency | $1 | get_package library_packages | filter_valid_flags
 }
 
 get_static_links()
 {
-	echo $(get_packages | filter is_static_dependency | $1 | get_package static_library_packages | filter_valid_flags)
+	get_packages | filter is_static_dependency | $1 | get_package static_library_packages | filter_valid_flags
 }
 
 link_statically()
