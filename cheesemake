@@ -245,10 +245,15 @@ source_file()
 	echo $2
 }
 
-within_test()
+shift_directory()
 {
 	shift
 	echo $@
+}
+
+within_directory()
+{
+	echo $1 | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
 }
 
 try_in_source()
@@ -256,7 +261,7 @@ try_in_source()
 	if [ -f "$1" ]; then
 		echo $1
 	else
-		echo src/$(echo $1 | tr '/' ' ' | map within_test | tr ' ' '/')
+		echo src/$(echo $1 | map within_directory)
 	fi 
 }
 
@@ -423,6 +428,22 @@ test_recipe()
 	run_tests
 }
 
+copy_header()
+{
+	cp src/$1 build/include/$1
+}
+
+make_include_directory()
+{
+	mkdir -p build/include/$(dirname $1)
+	echo $1
+}
+
+copy_headers()
+{
+	find src -name *.h* | map within_directory | map make_include_directory | map copy_header
+}
+
 get_source_objects()
 {
 	get_sources src | map get_output
@@ -444,6 +465,7 @@ package_recipe()
 	else
 		link output_flag get_source_objects source_dependencies $(get_name) ''
 	fi
+	copy_headers
 }
 
 is_verification()
