@@ -3,6 +3,10 @@
 	"compiler": "gcc -g -Wall",
 	"args": "--no-worries",
 	"packaging": "executable",
+	"modules":
+		[
+			"submod"
+		],
 	"dependencies":
 		[
 			{

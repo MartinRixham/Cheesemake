@@ -1,0 +1,19 @@
+{
+	"name": "subxample",
+	"compiler": "gcc -g -Wall",
+	"packaging": "archive",
+	"dependencies":
+		[
+			{
+				"package": "check",
+				"scope": "test"
+			}
+		],
+	"plugins":
+		[
+			{
+				"name": "cppcheck",
+				"phase": "validate"
+			}
+		]
+}

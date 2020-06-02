@@ -68,8 +68,21 @@ non_empty()
 	sed '/^$/d'
 }
 
+clean_module()
+{
+	cd $1
+	$0 clean
+	cd ..
+}
+
+get_modules()
+{
+	jq -c .modules $RECIPE | not is_null | jq -r .[]
+}
+
 clean()
 {
+	get_modules | map clean_module
 	rm -rf build
 }
 
@@ -113,6 +126,29 @@ validate_recipe()
 {
 	all_sources > /dev/null
 	run_plugins is_validation
+}
+
+copy_binaries_in()
+{
+	cp -r build/lib $1/build
+	cp -r build/bin $1/build
+	cp -r build/include $1/build
+}
+
+copy_binaries_out()
+{
+	cp -r $1/build/lib build/
+	cp -r $1/build/bin build/
+	cp -r $1/build/include build/
+}
+
+verify_module()
+{
+	copy_binaries_in $1 || true
+	cd $1
+	$0 verify
+	cd ../
+	copy_binaries_out $1 || true
 }
 
 is_shared()
@@ -320,6 +356,10 @@ compile_source()
 compile_recipe()
 {
 	validate_recipe
+	mkdir -p build/bin
+	mkdir -p build/lib
+	mkdir -p build/include
+	get_modules | map verify_module
 	mkdir -p build/src
 	compile_source
 }
@@ -457,9 +497,6 @@ archive()
 package_recipe()
 {
 	test_recipe
-	mkdir -p build/bin
-	mkdir -p build/lib
-	mkdir -p build/include
 	if is_archive; then
 		archive
 	else
