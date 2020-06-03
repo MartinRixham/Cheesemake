@@ -234,6 +234,11 @@ is_static_dependency()
 	echo $@ | jq .scope | grep -q static
 }
 
+is_module_dependency()
+{
+	echo $@ | jq .scope | grep -q module
+}
+
 source_dependencies()
 {
 	not is_test_dependency
@@ -246,7 +251,7 @@ base_directory()
 
 get_includes()
 {
-	get_packages | $1 | get_package include_packages
+	get_packages | not is_module_dependency | $1 | get_package include_packages
 }
 
 make_directory()
@@ -257,7 +262,7 @@ make_directory()
 
 compile()
 {
-	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) $(get_includes $3) $4
+	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) -Ibuild/include $(get_includes $3) $4
 
 	if [ $? -eq 0 ]; then
 		generate_hash $4 >> build/hashes
@@ -391,12 +396,22 @@ filter_valid_flags()
 
 get_links()
 {
-	get_packages | not is_static_dependency | $1 | get_package library_packages | filter_valid_flags
+	get_packages | not is_static_dependency | not is_module_dependency | $1 | get_package library_packages | filter_valid_flags
 }
 
 get_static_links()
 {
-	get_packages | filter is_static_dependency | $1 | get_package static_library_packages | filter_valid_flags
+	get_packages | filter is_static_dependency | not is_module_dependency | $1 | get_package static_library_packages | filter_valid_flags
+}
+
+get_link()
+{
+	echo -l$1
+}
+
+get_module_links()
+{
+	get_packages | filter is_module_dependency | $1 | jq -r .package | map get_link
 }
 
 link_statically()
@@ -416,7 +431,7 @@ output_flag()
 
 link()
 {
-	verbose $(echo $COMPILER | map $1) -o $4 $5 $($2) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
+	verbose $(echo $COMPILER | map $1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links $3) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
 }
 
 executable_file()
