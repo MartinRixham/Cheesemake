@@ -1,7 +1,7 @@
 {
 	"name": "subxample",
 	"compiler": "gcc -g -Wall",
-	"packaging": "archive",
+	"packaging": "shared",
 	"dependencies":
 		[
 			{

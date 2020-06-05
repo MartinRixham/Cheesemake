@@ -7,13 +7,14 @@ write_verbose()
 }
 
 local name=$(get_name)
-local includes=$(get_includes source_dependencies)
-local links=$(get_links source_dependencies)
-
+local includes="-Ibuild/include $(get_includes source_dependencies)"
+local links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
 mkdir -p build/gprof/build/bin
 cp -r src build/gprof
+cp -r build/lib build/gprof/build
+cp -r build/include build/gprof/build
 cd build/gprof
-$(echo $COMPILER | map without_flags) -pg -o $name $includes $links $(get_sources src) &> /dev/null
+verbose $(echo $COMPILER | map without_flags) -pg -o $name $includes $links $(get_sources src)
 $name &> /dev/null
 write_verbose "gprof $(echo $@ | jq -r .options | not is_null) $name gmon.out" profile$(date +%s).txt
 cd ../..

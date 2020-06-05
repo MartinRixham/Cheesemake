@@ -8,6 +8,8 @@ DIR=$(dirname $(readlink -f $0))
 
 COMPILER=$(jq -r .compiler $RECIPE)
 
+export LD_LIBRARY_PATH=build/lib
+
 map()
 {
 	while read line; do
