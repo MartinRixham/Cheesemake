@@ -124,13 +124,40 @@ all_sources()
 	get_sources test
 }
 
-validate_recipe()
+has_object()
+{
+	test -f $(get_output $1)
+}
+
+has_module()
+{
+	test -d $1 && test -f $(cd $1; get_name)
+}
+
+has_object_or_module()
+{
+	has_object $1 || has_module $1
+}
+
+filter_old_hashes()
+{
+	cat build/hashes 2> /dev/null | filter has_object_or_module > build/oldhashes
+	mv build/oldhashes build/hashes
+}
+
+verify_modules()
 {
 	all_sources > /dev/null
 	mkdir -p build/bin
 	mkdir -p build/lib
 	mkdir -p build/include
+	filter_old_hashes
 	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
+}
+
+validate_recipe()
+{
+	verify_modules
 	run_plugins is_validation
 }
 
@@ -354,30 +381,8 @@ get_missing_sources()
 	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map hash_name
 }
 
-has_object()
-{
-	[ -f $(get_output $1) ]
-}
-
-has_module()
-{
-	get_modules | grep -q $1
-}
-
-has_object_or_module()
-{
-	has_object $1 || has_module $1
-}
-
-filter_old_hashes()
-{
-	cat build/hashes 2> /dev/null | filter has_object_or_module > build/oldhashes
-	mv build/oldhashes build/hashes
-}
-
 compile_source()
 {
-	filter_old_hashes
 	get_missing_sources src | map remove_hash | map make_directory | parmap compile compilation_flag blank source_dependencies
 }
 
