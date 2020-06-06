@@ -70,11 +70,9 @@ non_empty()
 	sed '/^$/d'
 }
 
-clean_module()
+is_null()
 {
-	cd $1
-	$0 clean
-	cd ..
+	echo $1 | grep -q null
 }
 
 get_modules()
@@ -82,35 +80,17 @@ get_modules()
 	jq -c .modules $RECIPE | not is_null | jq -r .[]
 }
 
+clean_module()
+{
+	cd $1
+	$0 clean
+	cd ..
+}
+
 clean()
 {
 	get_modules | map clean_module
 	rm -rf build
-}
-
-is_null()
-{
-	echo $1 | grep -q null
-}
-
-get_plugin_and_config()
-{
-	echo $(echo $@ | jq -r .name) $(echo $@ | jq -c .config)
-}
-
-is_validation()
-{
-	echo $@ | jq .phase | grep -q validate
-}
-
-run_plugin()
-{
-	source $DIR/$1.chevre $2
-}
-
-run_plugins()
-{
-    jq -c .plugins $RECIPE | not is_null | jq -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
 }
 
 get_sources()
@@ -122,6 +102,16 @@ all_sources()
 {
 	get_sources src
 	get_sources test
+}
+
+object_file()
+{
+	echo build/$1.o
+}
+
+get_output()
+{
+	echo $1 | tr '.' ' ' | map object_file
 }
 
 has_object()
@@ -145,20 +135,20 @@ filter_old_hashes()
 	mv build/oldhashes build/hashes
 }
 
-verify_modules()
+hash_module()
 {
-	all_sources > /dev/null
-	mkdir -p build/bin
-	mkdir -p build/lib
-	mkdir -p build/include
-	filter_old_hashes
-	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
+	cd $1
+	all_sources | map generate_hash | echo $1 $(cat | openssl dgst)
 }
 
-validate_recipe()
+new_hash()
 {
-	verify_modules
-	run_plugins is_validation
+	echo $1 | grep '<'
+}
+
+hash_name()
+{
+	echo $2
 }
 
 copy_binaries_in()
@@ -185,10 +175,40 @@ verify_module()
 	cat $1/build/hashes | echo $1 $(cat | openssl dgst) >> build/hashes
 }
 
-hash_module()
+verify_modules()
 {
-	cd $1
-	all_sources | map generate_hash | echo $1 $(cat | openssl dgst)
+	all_sources > /dev/null
+	mkdir -p build/bin
+	mkdir -p build/lib
+	mkdir -p build/include
+	filter_old_hashes
+	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
+}
+
+get_plugin_and_config()
+{
+	echo $(echo $@ | jq -r .name) $(echo $@ | jq -c .config)
+}
+
+run_plugin()
+{
+	source $DIR/$1.chevre $2
+}
+
+run_plugins()
+{
+    jq -c .plugins $RECIPE | not is_null | jq -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
+}
+
+is_validation()
+{
+	echo $@ | jq .phase | grep -q validate
+}
+
+validate_recipe()
+{
+	verify_modules
+	run_plugins is_validation
 }
 
 is_shared()
@@ -217,56 +237,9 @@ get_name()
 	jq -r .name $RECIPE | map output_name | echo build/$(cat)
 }
 
-object_file()
-{
-	echo build/$1.o
-}
-
-get_output()
-{
-	echo $1 | tr '.' ' ' | map object_file
-}
-
-library_packages()
-{
-	echo --libs
-}
-
-static_library_packages()
-{
-	echo --static --libs
-}
-
-include_packages()
-{
-	echo --cflags-only-I 
-}
-
-remove_hash()
-{
-	cat build/hashes | grep -v $1 > build/oldhashes || true
-	mv build/oldhashes build/hashes || true
-	echo $1
-}
-
-configure_package()
-{
-	pkg-config $($1) $2
-}
-
-get_package()
-{
-	jq -r .package | map configure_package $1
-}
-
 get_packages()
 {
 	jq -c .dependencies $RECIPE | not is_null | jq -c .[]
-}
-
-is_test_dependency()
-{
-	echo $@ | jq .scope | grep -q test
 }
 
 is_static_dependency()
@@ -279,25 +252,24 @@ is_module_dependency()
 	echo $@ | jq .scope | grep -q module
 }
 
-source_dependencies()
+configure_package()
 {
-	not is_test_dependency
+	pkg-config $($1) $2
 }
 
-base_directory()
+get_package()
 {
-	echo $1
+	jq -r .package | map configure_package $1
+}
+
+include_packages()
+{
+	echo --cflags-only-I 
 }
 
 get_includes()
 {
 	get_packages | not is_module_dependency | $1 | get_package include_packages
-}
-
-make_directory()
-{
-	mkdir -p build/$(dirname $1)
-	echo $1
 }
 
 compile()
@@ -309,21 +281,18 @@ compile()
 	fi
 }
 
-compilation_flag()
+match_include()
 {
-	if is_shared; then
-		echo -fPIC
+	local regex="#\s*include\s+\"(.+)\""
+
+	if [[ $@ =~ $regex ]]; then
+		echo ${BASH_REMATCH[1]}
 	fi
 }
 
-new_hash()
+header_file()
 {
-	echo $1 | grep '<'
-}
-
-hash_name()
-{
-	echo $2
+	echo $(dirname $1)/$2
 }
 
 shift_directory()
@@ -346,20 +315,6 @@ try_in_source()
 	fi 
 }
 
-header_file()
-{
-	echo $(dirname $1)/$2
-}
-
-match_include()
-{
-	local regex="#\s*include\s+\"(.+)\""
-
-	if [[ $@ =~ $regex ]]; then
-		echo ${BASH_REMATCH[1]}
-	fi
-}
-
 with_headers()
 {
 	cat $1 | map match_include | map header_file $1 | map try_in_source
@@ -379,6 +334,36 @@ generate_hash()
 get_missing_sources()
 {
 	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map hash_name
+}
+
+remove_hash()
+{
+	cat build/hashes | grep -v $1 > build/oldhashes || true
+	mv build/oldhashes build/hashes || true
+	echo $1
+}
+
+make_directory()
+{
+	mkdir -p build/$(dirname $1)
+	echo $1
+}
+
+compilation_flag()
+{
+	if is_shared; then
+		echo -fPIC
+	fi
+}
+
+is_test_dependency()
+{
+	echo $@ | jq .scope | grep -q test
+}
+
+source_dependencies()
+{
+	not is_test_dependency
 }
 
 compile_source()
@@ -403,6 +388,11 @@ compile_tests()
 	get_missing_sources test | map remove_hash | map make_directory | parmap compile blank include_source all
 }
 
+library_packages()
+{
+	echo --libs
+}
+
 without_flags()
 {
 	echo $1
@@ -421,6 +411,11 @@ filter_valid_flags()
 get_links()
 {
 	get_packages | not is_static_dependency | not is_module_dependency | $1 | get_package library_packages | filter_valid_flags
+}
+
+static_library_packages()
+{
+	echo --static --libs
 }
 
 get_static_links()
@@ -444,18 +439,14 @@ link_statically()
 	echo $@
 }
 
-output_flag()
-{
-	echo $1
-
-	if is_shared; then
-		echo -shared
-	fi
-}
-
 link()
 {
 	verbose $(echo $COMPILER | map $1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links $3) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
+}
+
+is_executable()
+{
+	objdump -d $1 | grep -q "<main>"
 }
 
 executable_file()
@@ -471,11 +462,6 @@ get_executable()
 get_executable_and_object()
 {
 	echo $(get_executable $1) $1
-}
-
-is_executable()
-{
-	objdump -d $1 | grep -q "<main>"
 }
 
 get_test_objects()
@@ -507,9 +493,23 @@ test_recipe()
 	run_tests
 }
 
-copy_header()
+archive()
 {
-	cp src/$1 build/include/$1
+	verbose ar rcs $(get_name) $(get_source_objects)
+}
+
+output_flag()
+{
+	echo $1
+
+	if is_shared; then
+		echo -shared
+	fi
+}
+
+get_source_objects()
+{
+	get_sources src | map get_output
 }
 
 make_include_directory()
@@ -518,19 +518,14 @@ make_include_directory()
 	echo $1
 }
 
+copy_header()
+{
+	cp src/$1 build/include/$1
+}
+
 copy_headers()
 {
 	find src -name *.h* | map within_directory | map make_include_directory | map copy_header
-}
-
-get_source_objects()
-{
-	get_sources src | map get_output
-}
-
-archive()
-{
-	verbose ar rcs $(get_name) $(get_source_objects)
 }
 
 package_recipe()
