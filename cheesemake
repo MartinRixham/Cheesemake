@@ -127,6 +127,10 @@ all_sources()
 validate_recipe()
 {
 	all_sources > /dev/null
+	mkdir -p build/bin
+	mkdir -p build/lib
+	mkdir -p build/include
+	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
 	run_plugins is_validation
 }
 
@@ -380,10 +384,6 @@ compile_source()
 compile_recipe()
 {
 	validate_recipe
-	mkdir -p build/bin
-	mkdir -p build/lib
-	mkdir -p build/include
-	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
 	mkdir -p build/src
 	compile_source
 }
