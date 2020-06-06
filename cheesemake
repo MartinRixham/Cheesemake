@@ -139,9 +139,9 @@ copy_binaries_in()
 
 copy_binaries_out()
 {
-	cp -r $1/build/lib build/
-	cp -r $1/build/bin build/
-	cp -r $1/build/include build/
+	cp -r $1/build/lib build
+	cp -r $1/build/bin build
+	cp -r $1/build/include build
 }
 
 verify_module()
@@ -149,8 +149,15 @@ verify_module()
 	copy_binaries_in $1 || true
 	cd $1
 	$0 verify
-	cd ../
+	cd ..
 	copy_binaries_out $1 || true
+	cat $1/build/hashes | echo $1 $(cat | openssl dgst) >> build/hashes
+}
+
+hash_module()
+{
+	cd $1
+	all_sources | map generate_hash | echo $1 $(cat | openssl dgst)
 }
 
 is_shared()
@@ -283,7 +290,7 @@ new_hash()
 	echo $1 | grep '<'
 }
 
-source_file()
+hash_name()
 {
 	echo $2
 }
@@ -340,7 +347,7 @@ generate_hash()
 
 get_missing_sources()
 {
-	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map source_file
+	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map hash_name
 }
 
 has_object()
@@ -348,9 +355,19 @@ has_object()
 	[ -f $(get_output $1) ]
 }
 
+has_module()
+{
+	get_modules | grep -q $1
+}
+
+has_object_or_module()
+{
+	has_object $1 || has_module $1
+}
+
 filter_old_hashes()
 {
-	cat build/hashes 2> /dev/null | filter has_object > build/oldhashes
+	cat build/hashes 2> /dev/null | filter has_object_or_module > build/oldhashes
 	mv build/oldhashes build/hashes
 }
 
@@ -366,7 +383,7 @@ compile_recipe()
 	mkdir -p build/bin
 	mkdir -p build/lib
 	mkdir -p build/include
-	get_modules | map verify_module
+	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
 	mkdir -p build/src
 	compile_source
 }
