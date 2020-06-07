@@ -151,6 +151,18 @@ hash_name()
 	echo $2
 }
 
+get_missing_modules()
+{
+	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name
+}
+
+remove_hash()
+{
+	cat build/hashes | grep -v $1 > build/oldhashes || true
+	mv build/oldhashes build/hashes || true
+	echo $1
+}
+
 copy_binaries_in()
 {
 	cp -r build/lib $1/build
@@ -182,7 +194,7 @@ verify_modules()
 	mkdir -p build/lib
 	mkdir -p build/include
 	filter_old_hashes
-	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map verify_module
+	get_missing_modules | map remove_hash | map verify_module
 }
 
 get_plugin_and_config()
@@ -334,13 +346,6 @@ generate_hash()
 get_missing_sources()
 {
 	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map hash_name
-}
-
-remove_hash()
-{
-	cat build/hashes | grep -v $1 > build/oldhashes || true
-	mv build/oldhashes build/hashes || true
-	echo $1
 }
 
 make_directory()
