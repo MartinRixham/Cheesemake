@@ -1,11 +1,7 @@
 {
-	"name": "subxample",
+	"name": "subsubxample",
 	"compiler": "gcc -g -Wall",
 	"packaging": "shared",
-	"modules":
-		[
-			"subsubmod"
-		],
 	"dependencies":
 		[
 			{

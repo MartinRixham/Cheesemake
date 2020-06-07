@@ -19,6 +19,10 @@
 			{
 				"package": "subxample",
 				"scope": "module"
+			},
+			{
+				"package": "subsubxample",
+				"scope": "module"
 			}
 		],
 	"plugins":
