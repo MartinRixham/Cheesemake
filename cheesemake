@@ -82,26 +82,13 @@ get_modules()
 
 clean_module()
 {
-	cd $1
-	$0 clean
-	cd ..
+	(cd $1; clean)
 }
 
 clean()
 {
 	get_modules | map clean_module
 	rm -rf build
-}
-
-get_sources()
-{
-	find $1 -name *.c*
-}
-
-all_sources()
-{
-	get_sources src
-	get_sources test
 }
 
 object_file()
@@ -135,15 +122,86 @@ filter_old_hashes()
 	mv build/oldhashes build/hashes
 }
 
+hash_submodule()
+{
+	cat $1/build/hashes | echo $1 $(cat | openssl dgst) | map format_hash
+}
+
+get_sources()
+{
+	find $1 -name *.c*
+}
+
+all_sources()
+{
+	get_sources src
+	get_sources test
+}
+
+match_include()
+{
+	local regex="#\s*include\s+\"(.+)\""
+
+	if [[ $@ =~ $regex ]]; then
+		echo ${BASH_REMATCH[1]}
+	fi
+}
+
+header_file()
+{
+	echo $(dirname $1)/$2
+}
+
+shift_directory()
+{
+	shift
+	echo $@
+}
+
+within_directory()
+{
+	echo $1 | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
+}
+
+try_in_source()
+{
+	if [ -f "$1" ]; then
+		echo $1
+	else
+		echo src/$(echo $1 | map within_directory)
+	fi
+}
+
+with_headers()
+{
+	cat $1 | map match_include | map header_file $1 | map try_in_source
+	echo $1
+}
+
+read_file()
+{
+	echo $(cat $1 2> /dev/null)
+}
+
 format_hash()
 {
 	echo $1 $3
 }
 
+generate_hash()
+{
+	echo $1 | map with_headers | map read_file | echo $1 $(cat | openssl dgst) | map format_hash
+}
+
+module_sources()
+{
+	get_modules | map hash_submodule
+	all_sources | map generate_hash
+}
+
 hash_module()
 {
-	cd $1
-	all_sources | map generate_hash | echo $1 $(cat | openssl dgst) | map format_hash
+	(cd $1; module_sources | echo $1 $(cat | openssl dgst) | map format_hash)
 }
 
 new_hash()
@@ -185,11 +243,9 @@ copy_binaries_out()
 verify_module()
 {
 	copy_binaries_in $1 || true
-	cd $1
-	$0 verify
-	cd ..
+	(cd $1; verify_recipe)
 	copy_binaries_out $1 || true
-	cat $1/build/hashes | echo $1 $(cat | openssl dgst) | map format_hash >> build/hashes
+	hash_submodule $1 >> build/hashes
 }
 
 verify_modules()
@@ -296,56 +352,6 @@ compile()
 	if [ $? -eq 0 ]; then
 		generate_hash $4 >> build/hashes
 	fi
-}
-
-match_include()
-{
-	local regex="#\s*include\s+\"(.+)\""
-
-	if [[ $@ =~ $regex ]]; then
-		echo ${BASH_REMATCH[1]}
-	fi
-}
-
-header_file()
-{
-	echo $(dirname $1)/$2
-}
-
-shift_directory()
-{
-	shift
-	echo $@
-}
-
-within_directory()
-{
-	echo $1 | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
-}
-
-try_in_source()
-{
-	if [ -f "$1" ]; then
-		echo $1
-	else
-		echo src/$(echo $1 | map within_directory)
-	fi 
-}
-
-with_headers()
-{
-	cat $1 | map match_include | map header_file $1 | map try_in_source
-	echo $1
-}
-
-read_file()
-{
-	echo $(cat $1 2> /dev/null)
-}
-
-generate_hash()
-{
-	echo $1 | map with_headers | map read_file | echo $1 $(cat | openssl dgst) | map format_hash
 }
 
 get_missing_sources()
