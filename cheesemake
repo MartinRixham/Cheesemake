@@ -135,10 +135,15 @@ filter_old_hashes()
 	mv build/oldhashes build/hashes
 }
 
+format_hash()
+{
+	echo $1 $3
+}
+
 hash_module()
 {
 	cd $1
-	all_sources | map generate_hash | echo $1 $(cat | openssl dgst)
+	all_sources | map generate_hash | echo $1 $(cat | openssl dgst) | map format_hash
 }
 
 new_hash()
@@ -184,7 +189,7 @@ verify_module()
 	$0 verify
 	cd ..
 	copy_binaries_out $1 || true
-	cat $1/build/hashes | echo $1 $(cat | openssl dgst) >> build/hashes
+	cat $1/build/hashes | echo $1 $(cat | openssl dgst) | map format_hash >> build/hashes
 }
 
 verify_modules()
@@ -340,7 +345,7 @@ read_file()
 
 generate_hash()
 {
-	echo $1 | map with_headers | map read_file | echo $1 $(cat | openssl dgst)
+	echo $1 | map with_headers | map read_file | echo $1 $(cat | openssl dgst) | map format_hash
 }
 
 get_missing_sources()
