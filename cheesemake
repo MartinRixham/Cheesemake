@@ -124,7 +124,7 @@ filter_old_hashes()
 
 hash_submodule()
 {
-	cat $1/build/hashes | echo $1 $(cat | openssl dgst) | map format_hash
+	cat $1/build/hashes | sort | echo $1 $(cat | openssl dgst) | map format_hash
 }
 
 get_sources()
@@ -201,7 +201,7 @@ module_sources()
 
 hash_module()
 {
-	(cd $1; module_sources | echo $1 $(cat | openssl dgst) | map format_hash)
+	(cd $1; module_sources | sort | echo $1 $(cat | openssl dgst) | map format_hash)
 }
 
 new_hash()
