@@ -6,8 +6,6 @@ RECIPE=recipe.json
 
 DIR=$(dirname $(readlink -f $0))
 
-COMPILER=$(jq -r .compiler $RECIPE)
-
 export LD_LIBRARY_PATH=build/lib
 
 map()
@@ -345,9 +343,14 @@ get_includes()
 	get_packages | not is_module_dependency | $1 | get_package include_packages
 }
 
+get_compiler()
+{
+	jq -r .compiler $RECIPE
+}
+
 compile()
 {
-	verbose $COMPILER -c $($1) -o $(get_output $4) $($2) -Ibuild/include $(get_includes $3) $4
+	verbose $(get_compiler) -c $($1) -o $(get_output $4) $($2) -Ibuild/include $(get_includes $3) $4
 
 	if [ $? -eq 0 ]; then
 		generate_hash $4 >> build/hashes
@@ -416,7 +419,7 @@ without_flags()
 
 is_valid_flag()
 {
-	echo "int main(void) {return 0;}" | $(without_flags $COMPILER) -x c -E - $1
+	echo "int main(void) {return 0;}" | $(get_compiler | map without_flags) -x c -E - $1
 }
 
 filter_valid_flags()
@@ -457,7 +460,7 @@ link_statically()
 
 link()
 {
-	verbose $(echo $COMPILER | map $1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links $3) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
+	verbose $(get_compiler | map $1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links $3) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
 }
 
 is_executable()
