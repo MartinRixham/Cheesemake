@@ -136,6 +136,13 @@ all_sources()
 	get_sources test
 }
 
+copy_binaries_in()
+{
+	cp -r build/lib $1/build
+	cp -r build/bin $1/build
+	cp -r build/include $1/build
+}
+
 match_include()
 {
 	local regex="#\s*include\s+\"(.+)\""
@@ -163,7 +170,7 @@ within_directory()
 
 try_in_source()
 {
-	if [ -f "$1" ]; then
+	if [ -f $1 ]; then
 		echo $1
 	else
 		echo src/$(echo $1 | map within_directory)
@@ -212,11 +219,6 @@ hash_name()
 	echo $2
 }
 
-get_missing_modules()
-{
-	get_modules | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name
-}
-
 remove_hash()
 {
 	cat build/hashes | grep -v $1 > build/oldhashes || true
@@ -224,11 +226,10 @@ remove_hash()
 	echo $1
 }
 
-copy_binaries_in()
+rebuild_module()
 {
-	cp -r build/lib $1/build
-	cp -r build/bin $1/build
-	cp -r build/include $1/build
+	(cd $1; verify_recipe)
+	hash_submodule $1 >> build/hashes
 }
 
 copy_binaries_out()
@@ -241,9 +242,9 @@ copy_binaries_out()
 verify_module()
 {
 	copy_binaries_in $1 || true
-	(cd $1; verify_recipe)
+	(cd $1; verify_modules)
+	echo $1 | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map remove_hash | map rebuild_module
 	copy_binaries_out $1 || true
-	hash_submodule $1 >> build/hashes
 }
 
 verify_modules()
@@ -253,7 +254,7 @@ verify_modules()
 	mkdir -p build/lib
 	mkdir -p build/include
 	filter_old_hashes
-	get_missing_modules | map remove_hash | map verify_module
+	get_modules | map verify_module
 }
 
 get_plugin_and_config()
@@ -278,7 +279,6 @@ is_validation()
 
 validate_recipe()
 {
-	verify_modules
 	run_plugins is_validation
 }
 
@@ -604,12 +604,12 @@ do_task()
 {
 	case $1 in
 		clean) clean;;
-		validate) validate_recipe;;
-		compile) compile_recipe;;
-		test) test_recipe;;
-		package) package_recipe;;
-		verify) verify_recipe;;
-		run) run_recipe;;
+		validate) verify_modules; validate_recipe;;
+		compile) verify_modules; compile_recipe;;
+		test) verify_modules; test_recipe;;
+		package) verify_modules; package_recipe;;
+		verify) verify_modules; verify_recipe;;
+		run) verify_modules; run_recipe;;
 		*) print_usage;;
 	esac
 }
