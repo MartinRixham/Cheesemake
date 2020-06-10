@@ -11,6 +11,10 @@
 			{
 				"package": "check",
 				"scope": "test"
+			},
+			{
+				"package": "subsubxample",
+				"scope": "test,module"
 			}
 		],
 	"plugins":
