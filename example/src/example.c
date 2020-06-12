@@ -14,6 +14,7 @@ int main(void)
 	printf("%s%d%d\n", string, *thing, *subthing);
 
 	free(thing);
+	free(subthing);
 
 	return 0;
 }
