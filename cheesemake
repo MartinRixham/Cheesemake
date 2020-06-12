@@ -6,6 +6,8 @@ RECIPE=recipe.json
 
 DIR=$(dirname $(readlink -f $0))
 
+UPDATE_FLAG=$(if cp -u $0 /dev/null 2> /dev/null; then echo -u; fi)
+
 export LD_LIBRARY_PATH=build/lib
 
 map()
@@ -136,11 +138,16 @@ all_sources()
 	get_sources test
 }
 
+copy_all()
+{
+	cp -r $UPDATE_FLAG $1 $2
+}
+
 copy_binaries_in()
 {
-	cp -r build/lib $1/build
-	cp -r build/bin $1/build
-	cp -r build/include $1/build
+	copy_all build/lib $1/build
+	copy_all build/bin $1/build
+	copy_all build/include $1/build
 }
 
 match_include()
@@ -234,9 +241,9 @@ rebuild_module()
 
 copy_binaries_out()
 {
-	cp -r $1/build/lib build
-	cp -r $1/build/bin build
-	cp -r $1/build/include build
+	copy_all $1/build/lib build
+	copy_all $1/build/bin build
+	copy_all $1/build/include build
 }
 
 verify_module()
