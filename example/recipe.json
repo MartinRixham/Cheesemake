@@ -40,6 +40,10 @@
 					}
 			},
 			{
+				"name": "gcovr",
+				"phase": "verify"
+			},
+			{
 				"name": "gprof",
 				"phase": "verify"
 			}

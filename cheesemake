@@ -67,7 +67,7 @@ blank()
 
 non_empty()
 {
-	sed '/^$/d'
+	sed "/^$/d"
 }
 
 is_null()
@@ -129,7 +129,7 @@ hash_submodule()
 
 get_sources()
 {
-	find $1 -name *.c*
+	find $1 -name "*.c*"
 }
 
 all_sources()
@@ -302,17 +302,17 @@ is_archive()
 output_name()
 {
 	if is_shared; then
-		echo lib/lib$1.so
+		echo build/lib/lib$1.so
 	elif is_archive; then
-		echo lib/lib$1.a
+		echo build/lib/lib$1.a
 	else
-		echo bin/$1
+		echo build/bin/$1
 	fi
 }
 
 get_name()
 {
-	jq -r .name $RECIPE | map output_name | echo build/$(cat)
+	jq -r .name $RECIPE | map output_name
 }
 
 get_packages()
@@ -551,7 +551,7 @@ copy_header()
 
 copy_headers()
 {
-	find src -name *.h* | map within_directory | map make_include_directory | map copy_header
+	find src -name "*.h*" | map within_directory | map make_include_directory | map copy_header
 }
 
 package_recipe()
