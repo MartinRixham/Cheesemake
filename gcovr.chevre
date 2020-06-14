@@ -6,14 +6,48 @@ local includes="-Ibuild/include $(get_includes source_dependencies)"
 local test_includes="-Ibuild/include $(get_includes all)"
 local links="-Lbuild/lib $(get_module_links all) $(get_links all) $(get_static_links all | non_empty | map link_statically)"
 
-gcovr_compile()
+coverage_file()
 {
-	verbose $(echo $compiler | map without_flags) -c -fprofile-arcs -ftest-coverage -o $(get_output $1) $includes $1
+	echo build/$1.gcno
 }
 
-gcovr_compile_test()
+get_coverage_file()
 {
-	verbose $(echo $compiler | map without_flags) -c -o $(get_output $1) $test_includes $1
+	echo $1 | tr '.' ' ' | map coverage_file
+}
+
+has_coverage_data()
+{
+	test -f $(get_coverage_file $1) || (echo $1 | grep "^test/")
+}
+
+has_object_and_coverage_data()
+{
+	has_object $1 && has_coverage_data $1
+}
+
+coverage_flags()
+{
+	echo -fprofile-arcs -ftest-coverage
+}
+
+gcovr_get_includes()
+{
+	echo $includes
+}
+
+gcovr_get_test_includes()
+{
+	echo $test_includes
+}
+
+gcovr_compile()
+{
+	verbose $(echo $compiler | map without_flags) -c $($1) -o $(get_output $3) $($2) $3
+
+	if [ $? -eq 0 ]; then
+		generate_hash $3 >> build/hashes
+	fi
 }
 
 gcovr_link()
@@ -33,8 +67,9 @@ copy_all build/lib build/gcovr/build
 copy_all build/include build/gcovr/build
 
 cd build/gcovr
-get_sources src | map make_directory | parmap gcovr_compile
-get_sources test | map make_directory | parmap gcovr_compile_test
+filter_old_hashes has_object_and_coverage_data
+get_missing_sources src | map remove_hash | map make_directory | parmap gcovr_compile coverage_flags gcovr_get_includes
+get_missing_sources test | map remove_hash | map make_directory | parmap gcovr_compile blank gcovr_get_test_includes
 get_sources test | map get_output | filter is_executable | map gcovr_link
 get_sources test | map get_output | filter is_executable | map get_executable | map gcovr_run_test
 verbose gcovr -r . --html --html-details -o coverage_report$(date +%s).html

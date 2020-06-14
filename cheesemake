@@ -118,7 +118,7 @@ has_object_or_module()
 
 filter_old_hashes()
 {
-	cat build/hashes 2> /dev/null | filter has_object_or_module > build/oldhashes
+	cat build/hashes 2> /dev/null | filter $1 > build/oldhashes
 	mv build/oldhashes build/hashes
 }
 
@@ -260,7 +260,7 @@ verify_modules()
 	mkdir -p build/bin
 	mkdir -p build/lib
 	mkdir -p build/include
-	filter_old_hashes
+	filter_old_hashes has_object_or_module
 	get_modules | map verify_module
 }
 
