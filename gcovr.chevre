@@ -31,17 +31,17 @@ coverage_flags()
 	echo -fprofile-arcs -ftest-coverage
 }
 
-gcovr_get_includes()
+get_includes()
 {
 	echo $includes
 }
 
-gcovr_get_test_includes()
+get_test_includes()
 {
 	echo $test_includes
 }
 
-gcovr_compile()
+compile()
 {
 	verbose $(echo $compiler | map without_flags) -c $($1) -o $(get_output $3) $($2) $3
 
@@ -50,12 +50,12 @@ gcovr_compile()
 	fi
 }
 
-gcovr_link()
+link()
 {
 	verbose $(echo $compiler | map without_flags) --coverage -o $(get_executable $1) $1 $(all_sources | map get_output | not is_executable) -lgcov $links
 }
 
-gcovr_run_test()
+run_test()
 {
 	$1 &> /dev/null
 }
@@ -68,9 +68,8 @@ copy_all build/include build/gcovr/build
 
 cd build/gcovr
 filter_old_hashes has_object_and_coverage_data
-get_missing_sources src | map remove_hash | map make_directory | parmap gcovr_compile coverage_flags gcovr_get_includes
-get_missing_sources test | map remove_hash | map make_directory | parmap gcovr_compile blank gcovr_get_test_includes
-get_sources test | map get_output | filter is_executable | map gcovr_link
-get_sources test | map get_output | filter is_executable | map get_executable | map gcovr_run_test
+get_missing_sources src | map remove_hash | map make_directory | parmap compile coverage_flags get_includes
+get_missing_sources test | map remove_hash | map make_directory | parmap compile blank get_test_includes
+get_sources test | map get_output | filter is_executable | map link
+get_sources test | map get_output | filter is_executable | map get_executable | map run_test
 verbose gcovr -r . --html --html-details -o coverage_report$(date +%s).html
-cd ../..
