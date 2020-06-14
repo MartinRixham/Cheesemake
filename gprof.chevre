@@ -17,7 +17,7 @@ copy_all build/lib build/gprof/build
 copy_all build/include build/gprof/build
 
 cd build/gprof
-verbose $(echo $compiler | map without_flags) -pg -o $name $includes $links $(get_sources src)
+verbose $(echo $compiler | map without_flags) -pg -o $name $includes $(get_sources src) $links
 $name &> /dev/null
 write_verbose "gprof $(echo $@ | jq -r .options | not is_null) $name gmon.out" profile$(date +%s).txt
 cd ../..
