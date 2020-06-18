@@ -617,7 +617,7 @@ do_task()
 		package) verify_modules; package_recipe;;
 		verify) verify_modules; verify_recipe;;
 		run) verify_modules; run_recipe;;
-		*) print_usage;;
+		*) print_usage; exit 1;;
 	esac
 }
 
