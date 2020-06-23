@@ -7,4 +7,4 @@ privileged()
 	fi
 }
 
-verbose $(privileged $@) cuda-memcheck $(echo $@ | jq -r .options | not is_null) $(get_name) $(echo $@ | jq -r .args | not is_null)
+verbose $(privileged $@) cuda-memcheck $(echo $@ | jq -r .options | not is_null) $(get_executable_name) $(echo $@ | jq -r .args | not is_null)

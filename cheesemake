@@ -108,9 +108,58 @@ has_object()
 	test -f $(get_output $1)
 }
 
+is_executable()
+{
+	jq -r .packaging $RECIPE | grep -q executable
+}
+
+is_shared()
+{
+	jq -r .packaging $RECIPE | grep -q shared
+}
+
+is_archive()
+{
+	jq -r .packaging $RECIPE | grep -q archive
+}
+
+get_name()
+{
+	jq -r .name $RECIPE
+}
+
+get_executable_name()
+{
+	get_name | echo build/bin/$(cat)
+}
+
+get_shared_name()
+{
+	get_name | echo build/lib/lib$(cat).so
+}
+
+get_archive_name()
+{
+	get_name | echo build/lib/lib$(cat).a
+}
+
 has_module()
 {
-	test -d $1 && test -f $(cd $1; get_name)
+	if ! test -d $1; then
+		return 1
+	fi
+
+	if is_executable && ! test -f $(cd $1; get_executable_name); then
+		return 1
+	fi
+
+	if is_shared && ! test -f $(cd $1; get_shared_name); then
+		return 1
+	fi
+
+	if is_archive && ! test -f $(cd $1; get_archive_name); then
+		return 1
+	fi
 }
 
 has_object_or_module()
@@ -297,32 +346,6 @@ validate_recipe()
 	run_plugins is_validation
 }
 
-is_shared()
-{
-	jq -r .packaging $RECIPE | grep -q shared
-}
-
-is_archive()
-{
-	jq -r .packaging $RECIPE | grep -q archive
-}
-
-output_name()
-{
-	if is_shared; then
-		echo build/lib/lib$1.so
-	elif is_archive; then
-		echo build/lib/lib$1.a
-	else
-		echo build/bin/$1
-	fi
-}
-
-get_name()
-{
-	jq -r .name $RECIPE | map output_name
-}
-
 get_packages()
 {
 	jq -c .dependencies $RECIPE | not is_null | jq -c .[]
@@ -478,7 +501,7 @@ link()
 	verbose $(get_compiler | map $1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links $3) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
 }
 
-is_executable()
+is_executable_object()
 {
 	objdump -d $1 | grep -q "<main>"
 }
@@ -500,12 +523,12 @@ get_executable_and_object()
 
 get_test_objects()
 {
-	all_sources | map get_output | not is_executable
+	all_sources | map get_output | not is_executable_object
 }
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable | map get_executable_and_object | parmap link without_flags get_test_objects all
+	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link without_flags get_test_objects all
 }
 
 run()
@@ -515,7 +538,7 @@ run()
 
 run_tests()
 {
-	get_sources test | map get_output | filter is_executable | map get_executable | map run
+	get_sources test | map get_output | filter is_executable_object | map get_executable | map run
 }
 
 test_recipe()
@@ -529,16 +552,13 @@ test_recipe()
 
 archive()
 {
-	verbose ar rcs $(get_name) $(get_source_objects)
+	verbose ar rcs $(get_archive_name) $(get_source_objects)
 }
 
-output_flag()
+shared_flag()
 {
 	echo $1
-
-	if is_shared; then
-		echo -shared
-	fi
+	echo -shared
 }
 
 get_source_objects()
@@ -565,11 +585,19 @@ copy_headers()
 package_recipe()
 {
 	test_recipe
+
+	if is_executable; then
+		link without_flags get_source_objects source_dependencies $(get_executable_name) ''
+	fi
+	
+	if is_shared; then
+		link shared_flag get_source_objects source_dependencies $(get_shared_name) ''
+	fi
+
 	if is_archive; then
 		archive
-	else
-		link output_flag get_source_objects source_dependencies $(get_name) ''
 	fi
+
 	copy_headers
 }
 
@@ -592,11 +620,15 @@ get_arguments()
 run_recipe()
 {
 	verify_recipe
-	if is_shared || is_archive; then
-		echo "Library $(get_name) is not executable."
+
+	if is_executable; then
+		verbose $(get_executable_name) $(get_arguments)
+	elif is_shared; then
+		echo "Library $(get_shared_name) is not executable."
 		exit 1
-	else
-		verbose $(get_name) $(get_arguments)
+	elif is_archive; then
+		echo "Library $(get_archive_name) is not executable."
+		exit 1
 	fi
 }
 

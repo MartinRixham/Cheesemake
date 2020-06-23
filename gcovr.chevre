@@ -1,6 +1,5 @@
 #! /bin/bash
 
-local name=$(get_name)
 local compiler=$(get_compiler)
 local includes="-Ibuild/include $(get_includes source_dependencies)"
 local test_includes="-Ibuild/include $(get_includes all)"
@@ -52,7 +51,7 @@ compile()
 
 link()
 {
-	verbose $(echo $compiler | map without_flags) --coverage -o $(get_executable $1) $1 $(all_sources | map get_output | not is_executable) -lgcov $links
+	verbose $(echo $compiler | map without_flags) --coverage -o $(get_executable $1) $1 $(all_sources | map get_output | not is_executable_object) -lgcov $links
 }
 
 run_test()

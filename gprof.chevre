@@ -6,7 +6,7 @@ write_verbose()
 	$1 > $2	
 }
 
-local name=$(get_name)
+local name=$(get_executable_name)
 local compiler=$(get_compiler)
 local includes="-Ibuild/include $(get_includes source_dependencies)"
 local links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
