@@ -143,23 +143,33 @@ get_archive_name()
 	get_name | echo build/lib/lib$(cat).a
 }
 
+get_binaries()
+{
+	if is_executable; then
+		echo $(get_executable_name)
+	fi
+
+	if is_shared; then
+		echo $(get_shared_name)
+	fi
+
+	if is_archive; then
+		echo $(get_archive_name)
+	fi
+}
+
+has_file()
+{
+	test -f $1
+}
+
 has_module()
 {
 	if ! test -d $1; then
 		return 1
 	fi
 
-	if is_executable && ! test -f $(cd $1; get_executable_name); then
-		return 1
-	fi
-
-	if is_shared && ! test -f $(cd $1; get_shared_name); then
-		return 1
-	fi
-
-	if is_archive && ! test -f $(cd $1; get_archive_name); then
-		return 1
-	fi
+	(cd $1; get_binaries) | map has_file
 }
 
 has_object_or_module()
