@@ -279,12 +279,18 @@ hash_module()
 
 new_hash()
 {
-	echo $1 | grep '<'
+	echo $1 | grep -v "^---" | grep "^-"
+}
+
+shift_character()
+{
+	local string=$1
+	echo ${string:1}
 }
 
 hash_name()
 {
-	echo $2
+	echo $1 | map shift_character
 }
 
 remove_hash()
@@ -311,7 +317,7 @@ verify_module()
 {
 	copy_binaries_in $1 || true
 	(cd $1; verify_modules)
-	echo $1 | map hash_module | sort | diff -N -b - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map remove_hash | map rebuild_module
+	echo $1 | map hash_module | sort | diff -u - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map remove_hash | map rebuild_module
 	copy_binaries_out $1 || true
 }
 
@@ -407,7 +413,7 @@ compile()
 
 get_missing_sources()
 {
-	get_sources $1 | map generate_hash | sort | diff -N -b - <(sort build/hashes) | filter new_hash | map hash_name
+	get_sources $1 | map generate_hash | sort | diff -u - <(sort build/hashes) | filter new_hash | map hash_name
 }
 
 make_directory()
