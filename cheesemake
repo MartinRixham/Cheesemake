@@ -51,13 +51,22 @@ not()
 	done
 }
 
+all()
+{
+	while read line; do
+		if ! $@ $line &> /dev/null; then
+			return 1
+		fi
+	done
+}
+
 verbose()
 {
 	echo $@
 	$@
 }
 
-all()
+identity()
 {
 	echo $(cat)
 }
@@ -169,7 +178,7 @@ has_module()
 		return 1
 	fi
 
-	(cd $1; get_binaries) | map has_file
+	(cd $1; get_binaries) | all has_file
 }
 
 has_object_or_module()
@@ -458,7 +467,7 @@ include_source()
 
 compile_tests()
 {
-	get_missing_sources test | map remove_hash | map make_directory | parmap compile blank include_source all
+	get_missing_sources test | map remove_hash | map make_directory | parmap compile blank include_source identity
 }
 
 library_packages()
@@ -544,7 +553,7 @@ get_test_objects()
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link without_flags get_test_objects all
+	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link without_flags get_test_objects identity
 }
 
 run()
