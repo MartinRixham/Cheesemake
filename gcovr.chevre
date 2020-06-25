@@ -42,7 +42,7 @@ get_test_includes()
 
 compile()
 {
-	verbose $(echo $compiler | map without_flags) -c $($1) -o $(get_output $3) $($2) $3
+	verbose $compiler -c $($1) -o $(get_output $3) $($2) $3
 
 	if [ $? -eq 0 ]; then
 		generate_hash $3 >> build/hashes
