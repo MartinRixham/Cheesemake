@@ -293,8 +293,7 @@ new_hash()
 
 shift_character()
 {
-	local string=$1
-	echo ${string:1}
+	echo ${1:1}
 }
 
 hash_name()
