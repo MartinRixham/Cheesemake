@@ -339,6 +339,13 @@ verify_modules()
 	get_modules | map verify_module
 }
 
+print_making()
+{
+	echo "-------------------------------------------------------
+    Making $@
+-------------------------------------------------------"
+}
+
 get_plugin_and_config()
 {
 	echo $(echo $@ | jq -r .name).chevre $(echo $@ | jq -c .config)
@@ -367,6 +374,7 @@ is_validation()
 
 validate_recipe()
 {
+	print_making $(get_name)
 	run_plugins is_validation
 }
 
