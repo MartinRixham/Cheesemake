@@ -2,6 +2,8 @@
 
 set -Eeu
 
+SCRIPT_NAME=$(basename $0)
+
 RECIPE=recipe.json
 
 CHEESE_DIR=$(dirname $(readlink -f $0))
@@ -666,7 +668,7 @@ run_recipe()
 
 print_usage()
 {
-	echo "usage: cheesemake [clean] [<phase>]
+	echo "usage: $SCRIPT_NAME [clean] <phase>
 
 Cheesemake runs ALL phases in order up to the one specified.
 
@@ -674,9 +676,9 @@ Phases:
  validate		Run plugins such as static analysis tools.
  compile		Compile sources in the src directory and output them to build/src.
  test			Compile and run tests in the test directory.
- package		Create a binary called build/<recipe name>.
+ package		Create a binary in build/bin or build/lib.
  verify			Run plugins such as dynamic analysis tools.
- run			Run build/<recipe name>."
+ run			Run build/bin/<recipe name>."
 }
 
 do_task()
