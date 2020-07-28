@@ -420,9 +420,30 @@ get_compiler()
 	jq -r .compiler $RECIPE
 }
 
+define_flag()
+{
+	local value
+	local key=$1
+	shift
+	value=$($@)
+
+	if [ $? -eq 0 ]; then
+		if [ ${#value} -gt 0 ]; then
+			echo -D$key=$value
+		else
+			echo -D$key
+		fi
+	fi
+}
+
+get_defines()
+{
+	jq -c .define $RECIPE | not is_null | jq -r 'to_entries[] | [.key, .value] | @tsv' | map define_flag
+}
+
 compile()
 {
-	verbose $(get_compiler) -c $($1) -o $(get_output $4) $($2) -Ibuild/include $(get_includes $3) $4
+	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output $4) $($2) -Ibuild/include $(get_includes $3) $4
 
 	if [ $? -eq 0 ]; then
 		generate_hash $4 >> build/hashes

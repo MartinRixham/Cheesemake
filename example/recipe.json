@@ -47,5 +47,9 @@
 				"name": "gprof",
 				"phase": "verify"
 			}
-		]
+		],
+	"define":
+		{
+			"DEBUG": ""
+		}
 }
