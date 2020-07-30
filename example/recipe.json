@@ -50,6 +50,7 @@
 		],
 	"define":
 		{
-			"DEBUG": ""
+			"DEBUG": "",
+			"OS": "uname"
 		}
 }
