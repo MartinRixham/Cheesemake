@@ -428,7 +428,7 @@ define_flag()
 	value=$($@)
 
 	if [ $? -eq 0 ]; then
-		if [ ${#value} -gt 0 ]; then
+		if [ -n "$value" ]; then
 			echo -D$key=$value
 		else
 			echo -D$key
@@ -438,7 +438,7 @@ define_flag()
 
 get_defines()
 {
-	jq -c .define $RECIPE | not is_null | jq -r 'to_entries[] | [.key, .value] | @tsv' | map define_flag
+	jq -c .define $RECIPE | not is_null | jq -r "to_entries[] | [.key, .value] | @tsv" | map define_flag
 }
 
 compile()
