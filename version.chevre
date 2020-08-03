@@ -41,6 +41,26 @@ equal_minor()
 	fi
 }
 
+versions()
+{
+	echo $2
+	echo $3
+}
+
+minimum()
+{
+	if [ $(versions $@ | sort -V | head -n 1) != $3 ]; then
+		echo $1 version $2 is less than minimum version $3.
+	fi
+}
+
+maximum()
+{
+	if [ $(versions $@ | sort -V | head -n 1) = $3 ]; then
+		echo $1 version $2 is greater than or equal to maximum version $3.
+	fi
+}
+
 compare()
 {
 	local comparison=$1
@@ -50,6 +70,8 @@ compare()
 		version) equal $@;;
 		major-version) equal_major $@;;
 		minor-version) equal_minor $@;;
+		min-version) minimum $@;;
+		max-version) maximum $@;;
 	esac
 }
 
