@@ -34,11 +34,11 @@
 					{
 						"check":
 							{
-								"version": "0.14.0",
-								"min-version": "0.0.0",
-								"max-version": "0.15.0",
+								"version": "0.15.2",
+								"min-version": "0.10",
+								"max-version": "0.16",
 								"major-version": "0",
-								"minor-version": "14"
+								"minor-version": "15"
 							}
 					}
 			},

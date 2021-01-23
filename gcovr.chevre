@@ -1,28 +1,28 @@
-#! /bin/bash
+#!/bin/bash
 
-local compiler=$(get_compiler)
-local includes="-Ibuild/include $(get_includes source_dependencies)"
-local test_includes="-Ibuild/include $(get_includes all)"
-local links="-Lbuild/lib $(get_module_links all) $(get_links all) $(get_static_links all | non_empty | map link_statically)"
+compiler="$(get_compiler)"
+includes="-Ibuild/include $(get_includes source_dependencies)"
+test_includes="-Ibuild/include $(get_includes all)"
+links="-Lbuild/lib $(get_module_links all) $(get_links all) $(get_static_links all | non_empty | map link_statically)"
 
 coverage_file()
 {
-	echo build/$1.gcno
+	echo "build/$1.gcno"
 }
 
 get_coverage_file()
 {
-	echo $1 | tr '.' ' ' | map coverage_file
+	echo "$1" | tr '.' ' ' | map coverage_file
 }
 
 has_coverage_data()
 {
-	test -f $(get_coverage_file $1) || (echo $1 | grep "^test/")
+	test -f "$(get_coverage_file "$1")" || (echo "$1" | grep "^test/")
 }
 
 has_object_and_coverage_data()
 {
-	has_object $1 && has_coverage_data $1
+	has_object "$1" && has_coverage_data "$1"
 }
 
 coverage_flags()
@@ -32,26 +32,26 @@ coverage_flags()
 
 get_includes()
 {
-	echo $includes
+	echo "$includes"
 }
 
 get_test_includes()
 {
-	echo $test_includes
+	echo "$test_includes"
 }
 
 compile()
 {
-	verbose $compiler -c $($1) -o $(get_output $3) $($2) $3
+	verbose $compiler -c $($1) -o $(get_output "$3") $($2) $3
 
-	if [ $? -eq 0 ]; then
-		generate_hash $3 >> build/hashes
+	if [[ $? -eq 0 ]]; then
+		generate_hash "$3" >> build/hashes
 	fi
 }
 
 link()
 {
-	verbose $(echo $compiler | map without_flags) --coverage -o $(get_executable $1) $1 $(all_sources | map get_output | not is_executable_object) -lgcov $links
+	verbose $(echo "$compiler" | map without_flags) --coverage -o $(get_executable "$1") $1 $(all_sources | map get_output | not is_executable_object) -lgcov $links
 }
 
 run_test()
@@ -71,4 +71,4 @@ get_missing_sources src | map remove_hash | map make_directory | parmap compile 
 get_missing_sources test | map remove_hash | map make_directory | parmap compile blank get_test_includes
 get_sources test | map get_output | filter is_executable | map link
 get_sources test | map get_output | filter is_executable | map get_executable | map run_test
-verbose gcovr -r . --html --html-details -o coverage_report$(date +%s).html
+verbose gcovr -r . --html --html-details -o "coverage_report$(date +%s).html"

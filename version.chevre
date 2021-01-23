@@ -1,100 +1,100 @@
-#! /bin/bash
+#!/bin/bash
 
 equal()
 {
-	if [ $2 != $3 ]; then
-		echo $1 version $2 is not equal to $3.
+	if [[ "$2" != "$3" ]]; then
+		echo "$1 version $2 is not equal to $3."
 	fi
 }
 
 first()
 {
-	echo $1
+	echo "$1"
 }
 
 major()
 {
-	echo $1 | tr . ' ' | map first
+	echo "$1" | tr . ' ' | map first
 }
 
 equal_major()
 {
-	if [ $(major $2) != $3 ]; then
-		echo $1 major version $(major $2) is not equal to $3.
+	if [[ "$(major "$2")" != "$3" ]]; then
+		echo "$1 major version $(major "$2") is not equal to $3."
 	fi
 }
 
 second()
 {
-	echo $2
+	echo "$2"
 }
 
 minor()
 {
-	echo $1 | tr . ' ' | map second
+	echo "$1" | tr . ' ' | map second
 }
 
 equal_minor()
 {
-	if [ $(minor $2) != $3 ]; then
-		echo $1 minor version $(minor $2) is not equal to $3.
+	if [ "$(minor "$2")" != "$3" ]; then
+		echo "$1 minor version $(minor "$2") is not equal to $3."
 	fi
 }
 
 versions()
 {
-	echo $2
-	echo $3
+	echo "$2"
+	echo "$3"
 }
 
 minimum()
 {
-	if [ $(versions $@ | sort -V | head -n 1) != $3 ]; then
-		echo $1 version $2 is less than minimum version $3.
+	if [[ "$(versions "$@" | sort -V | head -n 1)" != "$3" ]]; then
+		echo "$1 version $2 is less than minimum version $3."
 	fi
 }
 
 maximum()
 {
-	if [ $(versions $@ | sort -V | head -n 1) = $3 ]; then
-		echo $1 version $2 is greater than or equal to maximum version $3.
+	if [[ "$(versions "$@" | sort -V | head -n 1)" = "$3" ]]; then
+		echo "$1 version $2 is greater than or equal to maximum version $3."
 	fi
 }
 
 compare()
 {
-	local comparison=$1
+	local comparison="$1"
 	shift
 
 	case $comparison in
-		version) equal $@;;
-		major-version) equal_major $@;;
-		minor-version) equal_minor $@;;
-		min-version) minimum $@;;
-		max-version) maximum $@;;
+		version) equal "$@";;
+		major-version) equal_major "$@";;
+		minor-version) equal_minor "$@";;
+		min-version) minimum "$@";;
+		max-version) maximum "$@";;
 	esac
 }
 
 get_version()
 {
-	pkg-config --modversion $1
+	pkg-config --modversion "$1"
 }
 
 package_version()
 {
-	echo $(echo $2 | jq -r .key) $1 $(get_version $1) $(echo $2 | jq -r .value) | map compare
+	echo "$(echo "$2" | jq -r .key) $1 $(get_version "$1") $(echo "$2" | jq -r .value)" | map compare
 }
 
 get_package()
 {
-	echo $1 | jq -c ".value | to_entries[]" | map package_version $(echo $1 | jq -r .key)
+	echo "$1" | jq -c ".value | to_entries[]" | map package_version "$(echo "$1" | jq -r .key)"
 }
 
 exit_on_error()
 {
-	if [ -n "$(cat)" ]; then
+	if [[ -n "$(cat)" ]]; then
 		exit 1
 	fi
 }
 
-echo $@ | jq -c . | not is_null | jq -c "to_entries[]" | map get_package | tee /dev/stderr | exit_on_error
+echo "$@" | jq -c . | not is_null | jq -c "to_entries[]" | map get_package | tee /dev/stderr | exit_on_error

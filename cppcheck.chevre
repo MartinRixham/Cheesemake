@@ -1,3 +1,3 @@
-#! /bin/bash
+#!/bin/bash
 
-verbose cppcheck --error-exitcode=1 $(echo $@ | jq -r .options | not is_null) $(all_sources)
+verbose cppcheck --error-exitcode=1 "$(echo "$@" | jq -r .options | not is_null)" "$(all_sources)"

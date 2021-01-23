@@ -2,21 +2,21 @@
 
 set -Eeu
 
-SCRIPT_NAME=$(basename $0)
+SCRIPT_NAME="$(basename "$0")"
 
 RECIPE=recipe.json
 
-CHEESE_DIR=$(dirname $(readlink -f $0))
+CHEESE_DIR="$(dirname "$(readlink -f "$0")")"
 
-RUN_DIR=$(pwd)
+RUN_DIR="$(pwd)"
 
-UPDATE_FLAG=$(if cp -u $0 /dev/null 2> /dev/null; then echo -u; fi)
+UPDATE_FLAG="$(if cp -u "$0" /dev/null 2> /dev/null; then echo -u; fi)"
 
 export LD_LIBRARY_PATH=build/lib
 
 map()
 {
-	while read line; do
+	while read -r line; do
 		$@ $line
 	done
 }
@@ -25,19 +25,19 @@ parmap()
 {
 	local pids=()
 
-	while read line; do
+	while read -r line; do
 		$@ $line &
 		pids+=($!)
 	done
 
 	for pid in ${pids[@]}; do
-		wait $pid
+		wait "$pid"
 	done
 }
 
 filter()
 {
-	while read line; do
+	while read -r line; do
 		if $@ $line &> /dev/null; then
 			echo $line
 		fi
@@ -46,7 +46,7 @@ filter()
 
 not()
 {
-	while read line; do
+	while read -r line; do
 		if ! $@ $line &> /dev/null; then
 			echo $line
 		fi
@@ -55,7 +55,7 @@ not()
 
 all()
 {
-	while read line; do
+	while read -r line; do
 		if ! $@ $line &> /dev/null; then
 			return 1
 		fi
@@ -70,7 +70,7 @@ verbose()
 
 identity()
 {
-	echo $(cat)
+	cat
 }
 
 blank()
@@ -85,17 +85,17 @@ non_empty()
 
 is_null()
 {
-	echo $1 | grep -q null
+	echo "$1" | grep -q null
 }
 
 get_modules()
 {
-	jq -c .modules $RECIPE | not is_null | jq -r .[]
+	jq -c .modules "$RECIPE" | not is_null | jq -r .[]
 }
 
 clean_module()
 {
-	(cd $1; clean)
+	(cd "$1"; clean)
 }
 
 clean()
@@ -106,102 +106,102 @@ clean()
 
 object_file()
 {
-	echo build/$1.o
+	echo "build/$1.o"
 }
 
 get_output()
 {
-	echo $1 | tr '.' ' ' | map object_file
+	echo "$1" | tr '.' ' ' | map object_file
 }
 
 has_object()
 {
-	test -f $(get_output $1)
+	test -f "$(get_output "$1")"
 }
 
 is_executable()
 {
-	jq -r .packaging $RECIPE | grep -q executable
+	jq -r .packaging "$RECIPE" | grep -q executable
 }
 
 is_shared()
 {
-	jq -r .packaging $RECIPE | grep -q shared
+	jq -r .packaging "$RECIPE" | grep -q shared
 }
 
 is_archive()
 {
-	jq -r .packaging $RECIPE | grep -q archive
+	jq -r .packaging "$RECIPE" | grep -q archive
 }
 
 get_name()
 {
-	jq -r .name $RECIPE
+	jq -r .name "$RECIPE"
 }
 
 get_executable_name()
 {
-	get_name | echo build/bin/$(cat)
+	get_name | echo "build/bin/$(cat)"
 }
 
 get_shared_name()
 {
-	get_name | echo build/lib/lib$(cat).so
+	get_name | echo "build/lib/lib$(cat).so"
 }
 
 get_archive_name()
 {
-	get_name | echo build/lib/lib$(cat).a
+	get_name | echo "build/lib/lib$(cat).a"
 }
 
 get_binaries()
 {
 	if is_executable; then
-		echo $(get_executable_name)
+		get_executable_name
 	fi
 
 	if is_shared; then
-		echo $(get_shared_name)
+		get_shared_name
 	fi
 
 	if is_archive; then
-		echo $(get_archive_name)
+		get_archive_name
 	fi
 }
 
 has_file()
 {
-	test -f $1
+	test -f "$1"
 }
 
 has_module()
 {
-	if ! test -d $1; then
+	if ! [[ -d "$1" ]]; then
 		return 1
 	fi
 
-	(cd $1; get_binaries) | all has_file
+	(cd "$1"; get_binaries) | all has_file
 }
 
 has_object_or_module()
 {
-	has_object $1 || has_module $1
+	has_object "$1" || has_module "$1"
 }
 
 filter_old_hashes()
 {
-	cat build/hashes 2> /dev/null | filter $1 > build/oldhashes
+	cat build/hashes 2> /dev/null | filter "$1" > build/oldhashes
 	mv build/oldhashes build/hashes
 }
 
 hash_submodule()
 {
-	cat $1/build/hashes | sort | echo $1 $(cat | openssl dgst) | map format_hash
+	sort "$1/build/hashes" | echo "$1" "$(cat | openssl dgst)" | map format_hash
 }
 
 get_sources()
 {
-	find $1 -name "*.c*"
+	find "$1" -name "*.c*"
 }
 
 all_sources()
@@ -212,69 +212,69 @@ all_sources()
 
 copy_all()
 {
-	cp -r $UPDATE_FLAG $1 $2
+	cp -r "$UPDATE_FLAG" "$1" "$2"
 }
 
 copy_binaries_in()
 {
-	copy_all build/lib $1/build
-	copy_all build/bin $1/build
-	copy_all build/include $1/build
+	copy_all build/lib "$1/build"
+	copy_all build/bin "$1/build"
+	copy_all build/include "$1/build"
 }
 
 match_include()
 {
 	local regex="#\s*include\s+\"(.+)\""
 
-	if [[ $@ =~ $regex ]]; then
-		echo ${BASH_REMATCH[1]}
+	if [[ "$*" =~ $regex ]]; then
+		echo "${BASH_REMATCH[1]}"
 	fi
 }
 
 header_file()
 {
-	echo $(dirname $1)/$2
+	echo "$(dirname "$1")/$2"
 }
 
 shift_directory()
 {
 	shift
-	echo $@
+	echo "$@"
 }
 
 within_directory()
 {
-	echo $1 | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
+	echo "$1" | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
 }
 
 try_in_source()
 {
-	if [ -f $1 ]; then
-		echo $1
+	if [[ -f "$1" ]]; then
+		echo "$1"
 	else
-		echo src/$(echo $1 | map within_directory)
+		echo "src/$(echo "$1" | map within_directory)"
 	fi
 }
 
 with_headers()
 {
-	cat $1 | map match_include | map header_file $1 | map try_in_source
-	echo $1
+	cat "$1" | map match_include | map header_file "$1" | map try_in_source
+	echo "$1"
 }
 
 read_file()
 {
-	echo $(cat $1 2> /dev/null)
+	cat "$1" 2> /dev/null
 }
 
 format_hash()
 {
-	echo $1 $3
+	echo "$1 $3"
 }
 
 generate_hash()
 {
-	echo $1 | map with_headers | map read_file | echo $1 $(cat | openssl dgst) | map format_hash
+	echo "$1" | map with_headers | map read_file | echo "$1" "$(cat | openssl dgst)" | map format_hash
 }
 
 module_sources()
@@ -285,50 +285,50 @@ module_sources()
 
 hash_module()
 {
-	(cd $1; module_sources | sort | echo $1 $(cat | openssl dgst) | map format_hash)
+	(cd "$1"; module_sources | sort | echo "$1" "$(cat | openssl dgst)" | map format_hash)
 }
 
 new_hash()
 {
-	echo $1 | grep -v "^---" | grep "^-"
+	echo "$1" | grep -v "^---" | grep "^-"
 }
 
 shift_character()
 {
-	echo ${1:1}
+	echo "${1:1}"
 }
 
 hash_name()
 {
-	echo $1 | map shift_character
+	echo "$1" | map shift_character
 }
 
 remove_hash()
 {
-	cat build/hashes | grep -v $1 > build/oldhashes || true
+	grep -v "$1" build/hashes > build/oldhashes || true
 	mv build/oldhashes build/hashes || true
-	echo $1
+	echo "$1"
 }
 
 rebuild_module()
 {
-	(cd $1; verify_recipe)
-	hash_submodule $1 >> build/hashes
+	(cd "$1"; verify_recipe)
+	hash_submodule "$1" >> build/hashes
 }
 
 copy_binaries_out()
 {
-	copy_all $1/build/lib build
-	copy_all $1/build/bin build
-	copy_all $1/build/include build
+	copy_all "$1/build/lib" build
+	copy_all "$1/build/bin" build
+	copy_all "$1/build/include" build
 }
 
 verify_module()
 {
-	copy_binaries_in $1 || true
-	(cd $1; verify_modules)
-	echo $1 | map hash_module | sort | diff -u - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map remove_hash | map rebuild_module
-	copy_binaries_out $1 || true
+	copy_binaries_in "$1" || true
+	(cd "$1"; verify_modules)
+	echo "$1" | map hash_module | sort | diff -u - <(sort build/hashes 2> /dev/null) | filter new_hash | map hash_name | map remove_hash | map rebuild_module
+	copy_binaries_out "$1" || true
 }
 
 verify_modules()
@@ -344,65 +344,65 @@ verify_modules()
 print_making()
 {
 	echo "-------------------------------------------------------
-    Making $@
+    Making $*
 -------------------------------------------------------"
 }
 
 get_plugin_and_config()
 {
-	echo $(echo $@ | jq -r .name).chevre $(echo $@ | jq -c .config)
+	echo "$(echo "$@" | jq -r .name).chevre" "$(echo "$@" | jq -c .config)"
 }
 
 run_plugin()
 {
-	if [ -f $1 ]; then
-		(source $1 $2)
-	elif [ -f $RUN_DIR/$1 ]; then
-		(source $RUN_DIR/$1 $2)
+	if [[ -f "$1" ]]; then
+		(source "$1" "$2")
+	elif [[ -f "$RUN_DIR/$1" ]]; then
+		(source "$RUN_DIR/$1" "$2")
 	else
-		(source $CHEESE_DIR/$1 $2)
+		(source "$CHEESE_DIR/$1" "$2")
 	fi
 }
 
 run_plugins()
 {
-    jq -c .plugins $RECIPE | not is_null | jq -c .[] | filter $1 | map get_plugin_and_config | map run_plugin
+    jq -c .plugins "$RECIPE" | not is_null | jq -c .[] | filter "$1" | map get_plugin_and_config | map run_plugin
 }
 
 is_validation()
 {
-	echo $@ | jq .phase | grep -q validate
+	echo "$@" | jq .phase | grep -q validate
 }
 
 validate_recipe()
 {
-	print_making $(get_name)
+	print_making "$(get_name)"
 	run_plugins is_validation
 }
 
 get_packages()
 {
-	jq -c .dependencies $RECIPE | not is_null | jq -c .[]
+	jq -c .dependencies "$RECIPE" | not is_null | jq -c .[]
 }
 
 is_static_dependency()
 {
-	echo $@ | jq .scope | grep -q static
+	echo "$@" | jq .scope | grep -q static
 }
 
 is_module_dependency()
 {
-	echo $@ | jq .scope | grep -q module
+	echo "$@" | jq .scope | grep -q module
 }
 
 configure_package()
 {
-	pkg-config $($1) $2
+	pkg-config "$($1)" "$2"
 }
 
 get_package()
 {
-	jq -r .package | map configure_package $1
+	jq -r .package | map configure_package "$1"
 }
 
 include_packages()
@@ -412,53 +412,53 @@ include_packages()
 
 get_includes()
 {
-	get_packages | not is_module_dependency | $1 | get_package include_packages
+	get_packages | not is_module_dependency | "$1" | get_package include_packages
 }
 
 get_compiler()
 {
-	jq -r .compiler $RECIPE
+	jq -r .compiler "$RECIPE"
 }
 
 define_flag()
 {
 	local value
-	local key=$1
+	local key="$1"
 	shift
 	value=$($@)
 
-	if [ $? -eq 0 ]; then
-		if [ -n "$value" ]; then
-			echo -D$key=$value
+	if [[ $? -eq 0 ]]; then
+		if [[ -n "$value" ]]; then
+			echo "-D$key=$value"
 		else
-			echo -D$key
+			echo "-D$key"
 		fi
 	fi
 }
 
 get_defines()
 {
-	jq -c .define $RECIPE | not is_null | jq -r "to_entries[] | [.key, .value] | @tsv" | map define_flag
+	jq -c .define "$RECIPE" | not is_null | jq -r "to_entries[] | [.key, .value] | @tsv" | map define_flag
 }
 
 compile()
 {
-	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output $4) $($2) -Ibuild/include $(get_includes $3) $4
+	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output "$4") $($2) -Ibuild/include $(get_includes "$3") $4
 
-	if [ $? -eq 0 ]; then
-		generate_hash $4 >> build/hashes
+	if [[ $? -eq 0 ]]; then
+		generate_hash "$4" >> build/hashes
 	fi
 }
 
 get_missing_sources()
 {
-	get_sources $1 | map generate_hash | sort | diff -u - <(sort build/hashes) | filter new_hash | map hash_name
+	get_sources "$1" | map generate_hash | sort | diff -u - <(sort build/hashes) | filter new_hash | map hash_name
 }
 
 make_directory()
 {
-	mkdir -p build/$(dirname $1)
-	echo $1
+	mkdir -p "build/$(dirname "$1")"
+	echo "$1"
 }
 
 compilation_flag()
@@ -470,7 +470,7 @@ compilation_flag()
 
 is_test_dependency()
 {
-	echo $@ | jq .scope | grep -q test
+	echo "$@" | jq .scope | grep -q test
 }
 
 source_dependencies()
@@ -507,12 +507,12 @@ library_packages()
 
 without_flags()
 {
-	echo $1
+	echo "$1"
 }
 
 is_valid_flag()
 {
-	echo "int main(void) {return 0;}" | $(get_compiler | map without_flags) -x c -E - $1
+	echo "int main(void) {return 0;}" | "$(get_compiler | map without_flags)" -x c -E - "$1"
 }
 
 filter_valid_flags()
@@ -522,7 +522,7 @@ filter_valid_flags()
 
 get_links()
 {
-	get_packages | not is_static_dependency | not is_module_dependency | $1 | get_package library_packages | filter_valid_flags
+	get_packages | not is_static_dependency | not is_module_dependency | "$1" | get_package library_packages | filter_valid_flags
 }
 
 static_library_packages()
@@ -532,48 +532,48 @@ static_library_packages()
 
 get_static_links()
 {
-	get_packages | filter is_static_dependency | not is_module_dependency | $1 | get_package static_library_packages | filter_valid_flags
+	get_packages | filter is_static_dependency | not is_module_dependency | "$1" | get_package static_library_packages | filter_valid_flags
 }
 
 get_link()
 {
-	echo -l$1
+	echo "-l$1"
 }
 
 get_module_links()
 {
-	get_packages | filter is_module_dependency | $1 | jq -r .package | map get_link
+	get_packages | filter is_module_dependency | "$1" | jq -r .package | map get_link
 }
 
 link_statically()
 {
 	echo -Wl,-Bstatic
-	echo $@
+	echo "$@"
 }
 
 link()
 {
-	verbose $(get_compiler | map $1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links $3) $(get_links $3) $(get_static_links $3 | non_empty | map link_statically)
+	verbose $(get_compiler | map "$1") -o $4 $5 $($2) -Lbuild/lib $(get_module_links "$3") $(get_links "$3") $(get_static_links "$3" | non_empty | map link_statically)
 }
 
 is_executable_object()
 {
-	objdump -d $1 | grep -q "<main>"
+	objdump -d "$1" | grep -q "<main>"
 }
 
 executable_file()
 {
-	echo $1
+	echo "$1"
 }
 
 get_executable()
 {
-	echo $1 | tr '.' ' ' | map executable_file
+	echo "$1" | tr '.' ' ' | map executable_file
 }
 
 get_executable_and_object()
 {
-	echo $(get_executable $1) $1
+	echo "$(get_executable "$1") $1"
 }
 
 get_test_objects()
@@ -612,7 +612,7 @@ archive()
 
 shared_flag()
 {
-	echo $1
+	echo "$1"
 	echo -shared
 }
 
@@ -623,13 +623,13 @@ get_source_objects()
 
 make_include_directory()
 {
-	mkdir -p build/include/$(dirname $1)
-	echo $1
+	mkdir -p "build/include/$(dirname "$1")"
+	echo "$1"
 }
 
 copy_header()
 {
-	cp src/$1 build/include/$1
+	cp "src/$1" "build/include/$1"
 }
 
 copy_headers()
@@ -642,11 +642,11 @@ package_recipe()
 	test_recipe
 
 	if is_executable; then
-		link without_flags get_source_objects source_dependencies $(get_executable_name) ''
+		link without_flags get_source_objects source_dependencies "$(get_executable_name)" ""
 	fi
 	
 	if is_shared; then
-		link shared_flag get_source_objects source_dependencies $(get_shared_name) ''
+		link shared_flag get_source_objects source_dependencies "$(get_shared_name)" ""
 	fi
 
 	if is_archive; then
@@ -658,7 +658,7 @@ package_recipe()
 
 is_verification()
 {
-	echo $@ | jq .phase | grep -q verify
+	echo "$@" | jq .phase | grep -q verify
 }
 
 verify_recipe()
@@ -669,7 +669,7 @@ verify_recipe()
 
 get_arguments()
 {
-	jq -r .args $RECIPE | not is_null
+	jq -r .args "$RECIPE" | not is_null
 }
 
 run_recipe()
@@ -716,8 +716,8 @@ do_task()
 	esac
 }
 
-for task in $@; do
-	do_task $task
+for task in "$@"; do
+	do_task "$task"
 done
 
 if [ $# -eq 0 ]; then
