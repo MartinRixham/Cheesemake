@@ -443,7 +443,7 @@ get_defines()
 
 compile()
 {
-	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output "$4") $($2) -Ibuild/include $(get_includes "$3") $4
+	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output "$4") $($2 $4) -Ibuild/include $(get_includes "$3") $4
 
 	if [[ $? -eq 0 ]]; then
 		generate_hash "$4" >> build/hashes
@@ -490,9 +490,14 @@ compile_recipe()
 	compile_source
 }
 
+in_source()
+{
+	echo "-Isrc/$1"
+}
+
 include_source()
 {
-	echo -Isrc
+	echo "-Isrc $(dirname "$1" | map within_directory | map in_source)"
 }
 
 compile_tests()
