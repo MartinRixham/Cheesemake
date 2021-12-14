@@ -64,8 +64,13 @@ all()
 
 verbose()
 {
-	echo $@
+	echo "$@"
 	$@
+}
+
+same()
+{
+	echo "$@"
 }
 
 identity()
@@ -260,18 +265,18 @@ within_directory()
 
 try_in_source()
 {
-	echo "$1"
-	echo "src/$(echo "$1" | map within_directory)"
-}
+    local regex="src/.*"
 
-file_exists()
-{
-	[[ -f $1 ]]
+    if ! [[ "$1" =~ $regex ]]; then
+		echo "src/$(echo "$1" | map within_directory)"
+    fi
+
+	echo "$1"
 }
 
 with_headers()
 {
-	cat "$1" | map match_include | map header_file "$1" | map try_in_source | filter file_exists
+	cat "$1" | map match_include | map header_file "$1" | map try_in_source | filter has_file
 	echo "$1"
 }
 
