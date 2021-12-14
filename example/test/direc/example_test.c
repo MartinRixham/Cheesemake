@@ -1,6 +1,8 @@
 #include <check.h>
 
 #include "subd/code.h"
+#include "local_head.h"
+#include "direc/full_head.h"
 
 START_TEST (test_name)
 {

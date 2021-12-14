@@ -231,8 +231,19 @@ match_include()
 	fi
 }
 
+first()
+{
+	echo $1
+}
+
+first_directory()
+{
+	echo "$1" | tr '/' ' ' | map first
+}
+
 header_file()
 {
+	echo "$(dirname "$1" | map first_directory)/$2"
 	echo "$(dirname "$1")/$2"
 }
 
@@ -249,16 +260,18 @@ within_directory()
 
 try_in_source()
 {
-	if [[ -f "$1" ]]; then
-		echo "$1"
-	else
-		echo "src/$(echo "$1" | map within_directory)"
-	fi
+	echo "$1"
+	echo "src/$(echo "$1" | map within_directory)"
+}
+
+file_exists()
+{
+	[[ -f $1 ]]
 }
 
 with_headers()
 {
-	cat "$1" | map match_include | map header_file "$1" | map try_in_source
+	cat "$1" | map match_include | map header_file "$1" | map try_in_source | filter file_exists
 	echo "$1"
 }
 
@@ -497,7 +510,7 @@ in_source()
 
 include_source()
 {
-	echo "-Isrc $(dirname "$1" | map within_directory | map in_source)"
+	echo "-Itest -Isrc $(dirname "$1" | map within_directory | map in_source)"
 }
 
 compile_tests()

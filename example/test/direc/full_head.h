@@ -1,0 +1,2 @@
+
+char *nother_direc();
