@@ -238,7 +238,7 @@ match_include()
 
 first()
 {
-	echo $1
+	echo "$1"
 }
 
 first_directory()
@@ -265,7 +265,7 @@ within_directory()
 
 try_in_source()
 {
-    local regex="src/.*"
+    local regex="^src/"
 
     if ! [[ "$1" =~ $regex ]]; then
 		echo "src/$(echo "$1" | map within_directory)"
@@ -373,12 +373,15 @@ get_plugin_and_config()
 
 run_plugin()
 {
-	if [[ -f "$1" ]]; then
-		(source "$1" "$2")
-	elif [[ -f "$RUN_DIR/$1" ]]; then
-		(source "$RUN_DIR/$1" "$2")
+	local plugin=$1
+	shift
+
+	if [[ -f "$plugin" ]]; then
+		(source "$plugin" "$@")
+	elif [[ -f "$RUN_DIR/$plugin" ]]; then
+		(source "$RUN_DIR/$plugin" "$@")
 	else
-		(source "$CHEESE_DIR/$1" "$2")
+		(source "$CHEESE_DIR/$plugin" "$@")
 	fi
 }
 
@@ -528,14 +531,9 @@ library_packages()
 	echo --libs
 }
 
-without_flags()
-{
-	echo "$1"
-}
-
 is_valid_flag()
 {
-	echo "int main(void) {return 0;}" | "$(get_compiler | map without_flags)" -x c -E - "$1"
+	echo "int main(void) {return 0;}" | "$(get_compiler | map first)" -x c -E - "$1"
 }
 
 filter_valid_flags()
@@ -606,7 +604,7 @@ get_test_objects()
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link without_flags get_test_objects identity
+	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link first get_test_objects identity
 }
 
 run()
@@ -665,7 +663,7 @@ package_recipe()
 	test_recipe
 
 	if is_executable; then
-		link without_flags get_source_objects source_dependencies "$(get_executable_name)" ""
+		link first get_source_objects source_dependencies "$(get_executable_name)" ""
 	fi
 	
 	if is_shared; then

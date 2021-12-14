@@ -51,7 +51,7 @@
 				"phase": "verify",
 				"config":
 					{
-						"args": "wibble"
+						"args": "this that tother"
 					}
 			},
 			{
