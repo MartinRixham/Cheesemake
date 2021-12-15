@@ -17,7 +17,7 @@ export LD_LIBRARY_PATH=build/lib
 map()
 {
 	while read -r line; do
-		if ! [[ -z $line ]]; then
+		if [[ -n $line ]]; then
 			$@ $line
 		fi
 	done
@@ -28,7 +28,7 @@ parmap()
 	local pids=()
 
 	while read -r line; do
-		if ! [[ -z $line ]]; then
+		if [[ -n $line ]]; then
 			$@ $line &
 			pids+=($!)
 		fi

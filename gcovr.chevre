@@ -51,11 +51,12 @@ compile()
 
 link()
 {
-	verbose $(echo "$compiler" | map without_flags) --coverage -o $(get_executable "$1") $1 $(all_sources | map get_output | not is_executable_object) -lgcov $links
+	verbose $(echo "$compiler" | map first) --coverage -o $(get_executable "$1") $1 $(all_sources | map get_output | not is_executable_object) -lgcov $links
 }
 
 run_test()
 {
+	echo "$1"
 	$1 &> /dev/null
 }
 
@@ -68,7 +69,7 @@ copy_all build/include build/gcovr/build
 cd build/gcovr
 filter_old_hashes has_object_and_coverage_data
 get_missing_sources src | map remove_hash | map make_directory | parmap compile coverage_flags blank get_includes
-get_missing_sources test | map remove_hash | map make_directory | tee /dev/stderr | parmap compile blank include_source get_test_includes
-get_sources test | map get_output | filter is_executable | map link
-get_sources test | map get_output | filter is_executable | map get_executable | map run_test
+get_missing_sources test | map remove_hash | map make_directory | parmap compile blank include_source get_test_includes
+get_sources test | map get_output | filter is_executable_object | map link
+get_sources test | map get_output | filter is_executable_object | map get_executable | map run_test
 verbose gcovr -r . --html --html-details -o "coverage_report$(date +%s).html"
