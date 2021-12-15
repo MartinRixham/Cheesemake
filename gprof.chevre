@@ -6,10 +6,18 @@ write_verbose()
 	$1 > $2	
 }
 
+run_verbose()
+{
+	echo "$@"
+	$@ > /dev/null
+}
+
 name="$(get_executable_name)"
 compiler="$(get_compiler)"
 includes="-Ibuild/include $(get_includes source_dependencies)"
 links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
+options="$(echo $@ | jq -r .options | not is_null)"
+args="$(echo "$@" | jq -r .args | not is_null)"
 
 mkdir -p build/gprof/build/bin
 copy_all src build/gprof
@@ -18,5 +26,5 @@ copy_all build/include build/gprof/build
 
 cd build/gprof
 verbose $compiler -pg -o $name $includes $(get_sources src) $links
-$name &> /dev/null
-write_verbose "gprof $(echo $@ | jq -r .options | not is_null) $name gmon.out" profile$(date +%s).txt
+run_verbose $name $args
+write_verbose "gprof $options $name gmon.out" "profile$(date +%s).txt"
