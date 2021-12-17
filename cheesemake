@@ -221,7 +221,7 @@ all_sources()
 
 copy_all()
 {
-	cp -r "$UPDATE_FLAG" "$1" "$2"
+	cp -R $UPDATE_FLAG "$1" "$2"
 }
 
 copy_binaries_in()
