@@ -252,8 +252,8 @@ first_directory()
 
 header_file()
 {
-	echo "$(dirname "$1" | map first_directory)/$2"
 	echo "$(dirname "$1")/$2"
+	echo "$(dirname "$1" | map first_directory)/$2"
 }
 
 shift_directory()
@@ -267,20 +267,22 @@ within_directory()
 	echo "$1" | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
 }
 
-try_in_source()
+find_header()
 {
-    local regex="^src/"
+	local path="$(echo "$1" | map within_directory)"
 
-    if ! [[ "$1" =~ $regex ]]; then
-		echo "src/$(echo "$1" | map within_directory)"
-    fi
-
-	echo "$1"
+	if [[ -f "$1" ]]; then
+		echo "$1"
+	elif [[ -f  "src/$path" ]]; then
+		echo "src/$path"
+	elif [[ -f "build/include/$path" ]]; then
+		echo "build/include/$path"
+	fi
 }
 
 with_headers()
 {
-	cat "$1" | map match_include | map header_file "$1" | map try_in_source | filter has_file
+	cat "$1" | map match_include | map header_file "$1" | map find_header
 	echo "$1"
 }
 
