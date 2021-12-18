@@ -233,11 +233,7 @@ copy_binaries_in()
 
 match_include()
 {
-	local regex="#\s*include\s+\"(.+)\""
-
-	if [[ "$*" =~ $regex ]]; then
-		echo "${BASH_REMATCH[1]}"
-	fi
+	echo "$(expr "$*" : "#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"")"
 }
 
 first()
@@ -747,6 +743,6 @@ for task in "$@"; do
 	do_task "$task"
 done
 
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
 	print_usage
 fi
