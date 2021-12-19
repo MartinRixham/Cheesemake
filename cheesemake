@@ -438,6 +438,20 @@ get_includes()
 	get_packages | not is_module_dependency | "$1" | get_package include_packages
 }
 
+fail_on_null()
+{
+	if [[ "$1" == null ]]; then
+		return 1
+	else
+		echo "$@"
+	fi
+}
+
+get_linker()
+{
+	jq -r .linker "$RECIPE" | map fail_on_null
+}
+
 get_compiler()
 {
 	jq -r .compiler "$RECIPE"
@@ -576,7 +590,7 @@ link_statically()
 
 link()
 {
-	verbose $(get_compiler | map "$1") -o $4 $5 $($2) -Lbuild/lib $(get_module_links "$3") $(get_links "$3") $(get_static_links "$3" | non_empty | map link_statically)
+	verbose $(get_linker || get_compiler | map first) $($1) -o $4 $5 $($2) -Lbuild/lib $(get_module_links "$3") $(get_links "$3") $(get_static_links "$3" | non_empty | map link_statically)
 }
 
 is_executable_object()
@@ -606,7 +620,7 @@ get_test_objects()
 
 link_tests()
 {
-	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link first get_test_objects identity
+	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link blank get_test_objects identity
 }
 
 run()
@@ -635,7 +649,6 @@ archive()
 
 shared_flag()
 {
-	echo "$1"
 	echo -shared
 }
 
@@ -665,7 +678,7 @@ package_recipe()
 	test_recipe
 
 	if is_executable; then
-		link first get_source_objects source_dependencies "$(get_executable_name)" ""
+		link blank get_source_objects source_dependencies "$(get_executable_name)" ""
 	fi
 	
 	if is_shared; then
