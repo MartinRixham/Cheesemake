@@ -233,7 +233,7 @@ copy_binaries_in()
 
 match_include()
 {
-	echo "$(expr "$*" : "#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"")"
+	echo "$(expr "$*" : "#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"" 2> /dev/null)"
 }
 
 first()
