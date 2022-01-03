@@ -595,7 +595,7 @@ link()
 
 is_executable_object()
 {
-	objdump -d "$1" | grep -q "<main>"
+	nm "$1" | grep -q "T main$"
 }
 
 executable_file()
