@@ -480,7 +480,7 @@ get_defines()
 
 compile()
 {
-	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output "$4") $($2 $4) -Ibuild/include $(get_includes "$3") $4
+	verbose $(get_compiler) $(get_defines) -c $($1) -o $(get_output "$4") $($2 $4) -Isrc -Ibuild/include $(get_includes "$3") $4
 
 	if [[ $? -eq 0 ]]; then
 		generate_hash "$4" >> build/hashes
@@ -534,7 +534,7 @@ in_source()
 
 include_source()
 {
-	echo "-Itest -Isrc $(dirname "$1" | map within_directory | map in_source)"
+	echo "-Itest $(dirname "$1" | map within_directory | map in_source)"
 }
 
 compile_tests()
