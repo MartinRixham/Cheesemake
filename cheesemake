@@ -623,14 +623,9 @@ link_tests()
 	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link blank get_test_objects identity
 }
 
-run()
-{
-	verbose $1
-}
-
 run_tests()
 {
-	get_sources test | map get_output | filter is_executable_object | map get_executable | map run
+	get_sources test | map get_output | filter is_executable_object | map get_executable | map verbose
 }
 
 test_recipe()
