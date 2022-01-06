@@ -14,7 +14,7 @@ run_verbose()
 
 name="$(get_executable_name)"
 compiler="$(get_compiler)"
-includes="-Ibuild/include $(get_includes source_dependencies)"
+includes="-Isrc -Ibuild/include $(get_includes source_dependencies)"
 links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
 options="$(echo $@ | jq -r .options | not is_null)"
 args="$(echo "$@" | jq -r .args | not is_null)"

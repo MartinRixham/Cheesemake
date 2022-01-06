@@ -1,8 +1,8 @@
 #!/bin/bash
 
 compiler="$(get_compiler)"
-includes="-Ibuild/include $(get_includes source_dependencies)"
-test_includes="-Ibuild/include $(get_includes identity)"
+includes="-Isrc -Ibuild/include $(get_includes source_dependencies)"
+test_includes="-Isrc -Ibuild/include $(get_includes identity)"
 links="-Lbuild/lib $(get_module_links identity) $(get_links identity) $(get_static_links identity | non_empty | map link_statically)"
 
 coverage_file()
