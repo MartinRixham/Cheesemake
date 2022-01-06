@@ -1,5 +1,6 @@
 #!/bin/bash
 
+options="$(echo "$@" | jq -r .options | not is_null)"
 compiler="$(get_compiler)"
 includes="-Isrc -Ibuild/include $(get_includes source_dependencies)"
 test_includes="-Isrc -Ibuild/include $(get_includes identity)"
@@ -74,4 +75,4 @@ get_missing_sources test | map remove_hash | map make_directory | parmap compile
 get_sources test | map get_output | filter is_executable_object | map link
 get_sources test | map get_output | filter is_executable_object | map get_executable | map run_test
 mkdir $date
-verbose gcovr -r . --html --html-details -o "$date/coverage_report.html"
+verbose gcovr -r . --html --html-details $options -o "$date/coverage_report.html"
