@@ -75,4 +75,6 @@ get_missing_sources test | map remove_hash | map make_directory | parmap compile
 get_sources test | map get_output | filter is_executable_object | map link
 get_sources test | map get_output | filter is_executable_object | map get_executable | map run_test
 mkdir $date
+rm -f latest
+ln -s $date latest
 verbose gcovr -r . --html --html-details $options -o "$date/coverage_report.html"
