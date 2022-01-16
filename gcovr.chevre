@@ -77,4 +77,4 @@ get_sources test | map get_output | filter is_executable_object | map get_execut
 mkdir $date
 rm -f latest
 ln -s $date latest
-verbose gcovr -r . --html --html-details $options -o "$date/coverage_report.html"
+verbose gcovr -s -r . --html --html-details $options -o "$date/coverage_report.html"
