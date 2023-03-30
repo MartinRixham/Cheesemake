@@ -37,4 +37,4 @@ Do `cmk <phase>` in the root directory of a project containing a `recipe.json` f
 
 ### Syntax
 
-Please refer to the [recipe](/MartinRixham/Cheesemake/blob/master/example/recipe.json) in the example.
+Please refer to the [recipe](example/recipe.json) in the example.
