@@ -203,9 +203,14 @@ filter_old_hashes()
 	mv build/oldhashes build/hashes
 }
 
+format_hash()
+{
+	echo "$1 $2"
+}
+
 hash_submodule()
 {
-	sort "$1/build/hashes" | echo "$1" "$(cat | openssl dgst)" | map format_hash
+	sort "$1/build/hashes" | echo "$1" "$(cat | openssl dgst -r)" | map format_hash
 }
 
 get_sources()
@@ -287,14 +292,9 @@ read_file()
 	cat "$1" 2> /dev/null
 }
 
-format_hash()
-{
-	echo "$1 $3"
-}
-
 generate_hash()
 {
-	echo "$1" | map with_headers | map read_file | echo "$1" "$(cat | openssl dgst)" | map format_hash
+	echo "$1" | map with_headers | map read_file | echo "$1" "$(cat | openssl dgst -r)" | map format_hash
 }
 
 module_sources()
@@ -305,7 +305,7 @@ module_sources()
 
 hash_module()
 {
-	(cd "$1"; module_sources | sort | echo "$1" "$(cat | openssl dgst)" | map format_hash)
+	(cd "$1"; module_sources | sort | echo "$1" "$(cat | openssl dgst -r)" | map format_hash)
 }
 
 new_hash()
