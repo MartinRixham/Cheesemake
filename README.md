@@ -1,8 +1,8 @@
 # Cheesemake
 
-It is not meant to be taken literally, it refers to any manufacturers of dairy products.
-
-Cheesemake is a declarative build tool for C/C++ written in Bash. Read the [article](https://www.infoq.com/articles/cheesemake-c-build-system). 
+Cheesemake is a declarative build tool for C/C++ written in Bash.
+It comes with plugins for serveral static and dynamic validation tools such as cppcheck and valgrind as well as the ability to run custom plugins.
+Read the [article](https://www.infoq.com/articles/cheesemake-c-build-system).
 
 ### Dependencies
 
