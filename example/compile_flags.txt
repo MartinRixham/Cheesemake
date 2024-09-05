@@ -1,0 +1,4 @@
+-Wall
+-Isrc
+-Itest
+-Ibuild/include
