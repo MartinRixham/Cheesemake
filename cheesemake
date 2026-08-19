@@ -346,8 +346,22 @@ verify_module()
 	copy_binaries_out "$1" || true
 }
 
+check_recipe()
+{
+	if [[ ! -f "$RECIPE" ]]; then
+		echo "$SCRIPT_NAME: there is no $RECIPE in $(pwd)" >&2
+		exit 1
+	fi
+
+	if ! jq -e . "$RECIPE" > /dev/null; then
+		echo "$SCRIPT_NAME: $RECIPE in $(pwd) is not a valid recipe" >&2
+		exit 1
+	fi
+}
+
 verify_modules()
 {
+	check_recipe
 	all_sources > /dev/null
 	mkdir -p build/bin
 	mkdir -p build/lib

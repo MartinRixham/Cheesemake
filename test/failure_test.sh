@@ -91,26 +91,19 @@ testRunningAProjectThatDoesNotCompileProducesNoBinary()
 	assert_output_lacks 'hello world'
 }
 
-# KNOWN DEFECT: the recipe is never checked. Every use of it goes through a
-# pipeline, and a pipeline takes its status from its last command, so the jq
-# failures are printed on standard error and then swallowed. The build only
-# stops because the compiler read out of the recipe is empty and so is not a
-# command, and a project with nothing to compile reports success. These three
-# tests pin the current behaviour; flip them when the recipe is validated
-# before the phases run.
-testMissingRecipeIsReportedButNotChecked()
+testMissingRecipeStopsTheBuild()
 {
 	rm "$PROJECT/recipe.json"
 
 	run_cheesemake compile
 
-	assert_failed
+	assert_status 1
 	assert_output_contains 'recipe.json'
-	assert_output_contains 'command not found'
+	assert_output_lacks 'command not found'
 	assert_no_file build/src/greeting.o
 }
 
-testInvalidRecipeIsReportedButNotChecked()
+testInvalidRecipeStopsTheBuild()
 {
 	write "$PROJECT/recipe.json" <<'EOF'
 { this is not json
@@ -118,19 +111,20 @@ EOF
 
 	run_cheesemake compile
 
-	assert_failed
-	assert_output_contains 'error'
+	assert_status 1
+	assert_output_contains 'recipe.json'
 	assert_no_file build/src/greeting.o
 }
 
-testMissingRecipeWithNothingToCompileReportsSuccess()
+testMissingRecipeWithNothingToCompileStopsTheBuild()
 {
 	rm "$PROJECT/recipe.json"
 	find "$PROJECT/src" "$PROJECT/test" -name "*.c" -delete
 
 	run_cheesemake package
 
-	assert_status 0
+	assert_status 1
+	assert_output_contains 'recipe.json'
 	assert_no_file build/bin/greeter
 }
 
