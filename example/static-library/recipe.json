@@ -1,0 +1,5 @@
+{
+	"name": "checksum",
+	"compiler": "gcc -g -Wall",
+	"packaging": "archive"
+}

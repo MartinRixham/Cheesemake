@@ -1,2 +1,0 @@
-
-char *some_direc();

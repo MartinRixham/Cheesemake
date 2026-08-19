@@ -1,0 +1,5 @@
+{
+	"name": "geometry",
+	"compiler": "gcc -g -Wall",
+	"packaging": "shared"
+}

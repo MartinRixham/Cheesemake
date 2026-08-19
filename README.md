@@ -37,4 +37,8 @@ Do `cmk <phase>` in the root directory of a project containing a `recipe.json` f
 
 ### Syntax
 
-Please refer to the [recipe](example/recipe.json) in the example.
+Please refer to the [examples](example). There is one for each thing a recipe can say: an [executable](example/executable), a [shared library](example/shared-library), a [static library](example/static-library), a project built from [modules](example/modules), [dependencies](example/dependencies) found with pkg-config, and [plugins](example/plugins), including one the project provides itself.
+
+### Test
+
+The [tests](test) for the script itself build the examples. Run them with `./test/run_tests.sh`.

@@ -1,0 +1,60 @@
+{
+	"name": "analysis",
+	"compiler": "gcc -g -Wall",
+	"args": "--no-worries",
+	"packaging": "executable",
+	"dependencies":
+		[
+			{
+				"package": "check",
+				"scope": "test"
+			}
+		],
+	"plugins":
+		[
+			{
+				"name": "version",
+				"phase": "validate",
+				"config":
+					{
+						"check":
+							{
+								"min-version": "0.10",
+								"max-version": "99"
+							}
+					}
+			},
+			{
+				"name": "cppcheck",
+				"phase": "validate"
+			},
+			{
+				"name": "lines",
+				"phase": "validate",
+				"config":
+					{
+						"maximum": "500"
+					}
+			},
+			{
+				"name": "valgrind",
+				"phase": "verify",
+				"config":
+					{
+						"args": "this that tother"
+					}
+			},
+			{
+				"name": "gcovr",
+				"phase": "verify"
+			},
+			{
+				"name": "gprof",
+				"phase": "verify",
+				"config":
+					{
+						"args": "this that tother"
+					}
+			}
+		]
+}

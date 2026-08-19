@@ -1,0 +1,2 @@
+
+int middle(void);

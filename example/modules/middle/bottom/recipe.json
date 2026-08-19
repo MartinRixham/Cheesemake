@@ -1,0 +1,5 @@
+{
+	"name": "bottom",
+	"compiler": "gcc -g -Wall",
+	"packaging": "shared,archive"
+}

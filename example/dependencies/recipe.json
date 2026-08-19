@@ -1,0 +1,20 @@
+{
+	"name": "wordcount",
+	"compiler": "gcc -g -Wall",
+	"packaging": "executable",
+	"dependencies":
+		[
+			{
+				"package": "glib-2.0"
+			},
+			{
+				"package": "check",
+				"scope": "test"
+			}
+		],
+	"define":
+		{
+			"DEBUG": "",
+			"OS": "uname"
+		}
+}

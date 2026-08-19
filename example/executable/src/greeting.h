@@ -1,0 +1,2 @@
+
+char *greeting(void);

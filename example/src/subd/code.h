@@ -1,2 +1,0 @@
-
-char *get_code();

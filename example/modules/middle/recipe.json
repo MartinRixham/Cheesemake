@@ -1,0 +1,16 @@
+{
+	"name": "middle",
+	"compiler": "gcc -g -Wall",
+	"packaging": "shared",
+	"modules":
+		[
+			"bottom"
+		],
+	"dependencies":
+		[
+			{
+				"package": "bottom",
+				"scope": "module"
+			}
+		]
+}

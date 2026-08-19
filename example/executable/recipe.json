@@ -1,0 +1,6 @@
+{
+	"name": "greeter",
+	"compiler": "gcc -g -Wall",
+	"packaging": "executable",
+	"args": "world"
+}

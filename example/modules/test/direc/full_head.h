@@ -1,0 +1,2 @@
+
+#define EXPECTED_MIDDLE 11

@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# A plugin belonging to this project rather than to cheesemake, to show that a
+# recipe can name a plugin of its own. It counts the lines of source and fails
+# the build if there are more of them than the configuration allows.
+
+get_maximum()
+{
+	echo "$@" | jq -r .maximum | not is_null
+}
+
+lines="$(all_sources | map read_file | wc -l)"
+maximum="$(get_maximum "$@")"
+
+echo "$lines lines of source in $(get_name)"
+
+if [[ -n "$maximum" ]] && [[ "$lines" -gt "$maximum" ]]; then
+	echo "$(get_name) has more than $maximum lines of source."
+	exit 1
+fi
