@@ -415,7 +415,7 @@ is_module_dependency()
 
 configure_package()
 {
-	pkg-config "$($1)" "$2"
+	pkg-config $($1) "$2"
 }
 
 get_package()

@@ -42,25 +42,16 @@ testTestScopedDependencyIsUsedForTestsOnly()
 	assert_lacks "$(output_line 'gcc -o build/bin/wordcount')" '-lcheck'
 }
 
-# KNOWN DEFECT: configure_package runs
-#
-#	pkg-config "$($1)" "$2"
-#
-# so the two words that static_library_packages produces, "--static --libs",
-# arrive as a single argument and pkg-config rejects them. Static scoped
-# dependencies therefore contribute no flags at all and never reach the
-# -Wl,-Bstatic that link_statically is supposed to add. This test pins the
-# current behaviour; flip it when configure_package is fixed.
-testStaticScopedDependencyContributesNoLinkFlags()
+# Only the exit status is left out of this test. The link line is what the
+# scope decides, and it is checked; whether the link then succeeds depends on
+# the host having static versions of libcheck and the C libraries it drags in.
+testStaticScopedDependencyIsLinkedStatically()
 {
 	edit_recipe '.dependencies |= map(if .package == "check" then .scope = "test,static" else . end)'
 
 	run_cheesemake package
 
-	assert_status 1
-	assert_output_lacks '-Wl,-Bstatic'
-	assert_lacks "$(output_line 'gcc -o build/test/counter_test')" '-lcheck'
-	assert_no_file build/bin/wordcount
+	assert_contains "$(output_line 'gcc -o build/test/counter_test')" '-Wl,-Bstatic -lcheck'
 }
 
 testUnknownPackageFailsTheBuild()
