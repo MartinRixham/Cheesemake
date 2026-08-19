@@ -178,13 +178,23 @@ has_file()
 	test -f "$1"
 }
 
+has_module_binaries()
+{
+	(cd "$1"; get_binaries | all has_file)
+}
+
+has_copied_binaries()
+{
+	(cd "$1"; get_binaries) | all has_file
+}
+
 has_module()
 {
 	if ! [[ -d "$1" ]]; then
 		return 1
 	fi
 
-	(cd "$1"; get_binaries) | all has_file
+	has_module_binaries "$1" && has_copied_binaries "$1"
 }
 
 has_object_or_module()

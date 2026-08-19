@@ -106,16 +106,7 @@ testMissingModuleLibraryIsRebuilt()
 	assert_file middle/build/lib/libmiddle.so
 }
 
-# KNOWN DEFECT: has_module asks the module which binaries it produces
-#
-#	(cd "$1"; get_binaries) | all has_file
-#
-# but tests for those files in the directory the build was started in, so it
-# is the copy in the project's own build/lib that decides whether a module is
-# up to date. Deleting the module's copy alone goes unnoticed: no rebuild
-# happens and copy_binaries_in simply puts the project's copy back. This test
-# pins the current behaviour; flip it when has_module tests the module itself.
-testDeletingTheModulesOwnLibraryIsNotNoticed()
+testDeletingTheModulesOwnLibraryIsNoticed()
 {
 	run_cheesemake package
 	assert_status 0
@@ -125,9 +116,10 @@ testDeletingTheModulesOwnLibraryIsNotNoticed()
 	run_cheesemake package
 
 	assert_status 0
-	assert_output_lacks 'Making middle'
+	assert_output_contains 'Making middle'
 	assert_output_lacks 'src/middle.c'
 	assert_file middle/build/lib/libmiddle.so
+	assert_file build/lib/libmiddle.so
 }
 
 testFailureInAModuleStopsTheProject()

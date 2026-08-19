@@ -36,7 +36,3 @@ script.
 | `module_test.sh` | module build order, propagation of binaries, rebuilding, failure | `modules` |
 | `incremental_test.sh` | what the hashes in `build/hashes` cause to be compiled again | `executable`, `shared-library` |
 | `failure_test.sh` | compilation, test, link and recipe failures | `executable` |
-
-Tests whose name and comment say so pin behaviour that looks like a defect
-rather than behaviour that is wanted; the comment says what to change when the
-defect is fixed.
