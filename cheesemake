@@ -241,11 +241,6 @@ copy_binaries_in()
 	copy_all build/include "$1/build"
 }
 
-match_include()
-{
-	echo "$(expr "$*" : "#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"" 2> /dev/null)"
-}
-
 first()
 {
 	echo "$1"
@@ -286,9 +281,14 @@ find_header()
 	fi
 }
 
+match_includes()
+{
+	sed -n "s/^[[:space:]]*#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"/\1/p" "$1"
+}
+
 with_headers()
 {
-	cat "$1" | map match_include | map header_file "$1" | map find_header
+	match_includes "$1" | map header_file "$1" | map find_header
 	echo "$1"
 }
 
