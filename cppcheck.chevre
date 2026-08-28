@@ -1,3 +1,40 @@
 #!/bin/bash
 
-verbose cppcheck --error-exitcode=1 "$(echo "$@" | jq -r .options | not is_null)" "$(all_sources)"
+# cppcheck is slow, so a source that has not changed since it last passed is
+# not checked again. What passed is remembered in a file of the plugin's own
+# rather than in build/hashes: passing cppcheck is not the same thing as
+# having been compiled, and the options cppcheck was given are part of what
+# passed.
+
+CHECKED=build/cppcheck
+
+options="$(echo "$@" | jq -r .options | not is_null)"
+
+# What passed last time, as long as it passed with the options in use now.
+checked_before()
+{
+	if [[ -f "$CHECKED" ]] && [[ "$(head -n 1 "$CHECKED")" == "$options" ]]; then
+		tail -n +2 "$CHECKED"
+	fi
+}
+
+hashes="$(all_sources | map generate_hash | sort)"
+
+if [[ -z "$hashes" ]]; then
+	exit 0
+fi
+
+sources="$(echo "$hashes" | diff -u - <(checked_before | sort) | filter new_hash | map hash_name)"
+
+if [[ -z "$sources" ]]; then
+	exit 0
+fi
+
+verbose cppcheck --error-exitcode=1 "$options" $sources
+
+# Only once everything has passed. A source that failed is never recorded, so
+# it is checked again on the next build.
+{
+	echo "$options"
+	echo "$hashes"
+} > "$CHECKED"

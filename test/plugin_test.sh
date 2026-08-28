@@ -151,6 +151,121 @@ testVerificationPluginFailureStopsTheRun()
 	assert_output_lacks 'the number is 7'
 }
 
+# cppcheck remembers what passed in build/cppcheck, so that it only checks a
+# source that has changed since. All three sources of the example include
+# numbers.h.
+
+# A source cppcheck rejects, out of bounds by one.
+write_rejected_source()
+{
+	write "$PROJECT/src/bad.c" <<'EOF'
+int bad(void)
+{
+	int a[2];
+
+	a[3] = 1;
+
+	return a[0];
+}
+EOF
+}
+
+testCppcheckDoesNotCheckASourceThatHasNotChanged()
+{
+	run_cheesemake validate
+	assert_status 0
+	assert_output_contains 'Checking src/analysis.c'
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_lacks 'cppcheck --error-exitcode=1'
+}
+
+testCppcheckChecksOnlyTheSourceThatChanged()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	change_source src/numbers.c
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'Checking src/numbers.c'
+	assert_output_lacks 'Checking src/analysis.c'
+	assert_output_lacks 'Checking test/numbers_test.c'
+}
+
+testCppcheckChecksEverySourceThatIncludesAChangedHeader()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	change_source src/numbers.h
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'Checking src/analysis.c'
+	assert_output_contains 'Checking src/numbers.c'
+	assert_output_contains 'Checking test/numbers_test.c'
+}
+
+testCppcheckChecksARejectedSourceOnEveryBuild()
+{
+	write_rejected_source
+
+	run_cheesemake validate
+	assert_failed
+	assert_output_contains 'Checking src/bad.c'
+
+	run_cheesemake validate
+
+	assert_failed
+	assert_output_contains 'Checking src/bad.c'
+}
+
+testCppcheckStopsCheckingARejectedSourceOnceItPasses()
+{
+	write_rejected_source
+
+	run_cheesemake validate
+	assert_failed
+
+	write "$PROJECT/src/bad.c" <<'EOF'
+int bad(void)
+{
+	return 0;
+}
+EOF
+
+	run_cheesemake validate
+	assert_status 0
+	assert_output_contains 'Checking src/bad.c'
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_lacks 'cppcheck --error-exitcode=1'
+}
+
+testCppcheckChecksEverythingAgainWhenItsOptionsChange()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	edit_recipe '.plugins |= map(if .name == "cppcheck" then .config = { "options": "--inline-suppr" } else . end)'
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'cppcheck --error-exitcode=1 --inline-suppr'
+	assert_output_contains 'Checking src/analysis.c'
+	assert_output_contains 'Checking src/numbers.c'
+	assert_output_contains 'Checking test/numbers_test.c'
+}
+
 testEveryPluginTheExampleConfiguresRuns()
 {
 	run_cheesemake verify
