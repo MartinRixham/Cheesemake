@@ -75,6 +75,23 @@ testUnchangedModuleIsNotRebuilt()
 	assert_output_lacks 'src/middle.c'
 }
 
+# A module's hash is made of the hashes in its own build/hashes, so one lost
+# while the module compiles leaves the module looking changed, and the project
+# rebuilds all of it on every build.
+testUnchangedModuleOfManySourcesIsNotRebuilt()
+{
+	generate_sources middle/src generated
+
+	run_cheesemake package
+	assert_status 0
+
+	run_cheesemake package
+
+	assert_status 0
+	assert_output_lacks 'Making middle'
+	assert_output_lacks '-c -o'
+}
+
 testChangedModuleSourceRebuildsTheModule()
 {
 	run_cheesemake run

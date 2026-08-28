@@ -107,6 +107,30 @@ change_source()
 	echo '/* changed */' >> "${2:-$PROJECT}/$1"
 }
 
+# The compiles run in parallel, and each one appends its hash to build/hashes
+# as it finishes, while build/hashes is rewritten for the sources still to
+# come. Two or three sources hardly ever overlap; this many always did.
+SOURCES_ENOUGH_TO_OVERLAP=30
+
+# generate_sources <directory> <name> [<project directory>]
+#
+# Fills a directory with sources that do nothing, for the tests that need
+# enough of them compiling at once to be sure the two overlap.
+generate_sources()
+{
+	local dir="${3:-$PROJECT}/$1"
+	local i
+
+	for ((i = 1; i <= SOURCES_ENOUGH_TO_OVERLAP; i++)); do
+		write "$dir/$2$i.c" <<EOF
+int $2$i(void)
+{
+	return $i;
+}
+EOF
+	done
+}
+
 # ---------------------------------------------------------------- running
 
 # run_cheesemake [-C directory] <arguments>

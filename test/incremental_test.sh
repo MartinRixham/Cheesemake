@@ -37,6 +37,45 @@ testNothingIsCompiledOnTheSecondBuild()
 	assert_output_lacks '-c -o'
 }
 
+testNothingIsCompiledOnTheSecondBuildOfManySources()
+{
+	generate_sources src generated
+
+	run_cheesemake compile
+	assert_status 0
+
+	run_cheesemake compile
+
+	assert_status 0
+	assert_output_lacks '-c -o'
+}
+
+testEverySourceLeavesItsHashBehindWhenManyCompileAtOnce()
+{
+	generate_sources src generated
+
+	run_cheesemake compile
+
+	assert_status 0
+	assertEquals "expected a hash for every source, output was:
+$OUTPUT" \
+		"$(find "$PROJECT/src" -name '*.c' | wc -l)" \
+		"$(wc -l < "$PROJECT/build/hashes")"
+}
+
+testNothingIsCompiledOnTheSecondBuildOfManyTests()
+{
+	generate_sources test generatedtest
+
+	run_cheesemake test
+	assert_status 0
+
+	run_cheesemake test
+
+	assert_status 0
+	assert_output_lacks '-c -o'
+}
+
 testTouchingASourceDoesNotRecompileIt()
 {
 	run_cheesemake package
