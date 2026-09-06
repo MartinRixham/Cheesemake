@@ -1,0 +1,28 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            jq \
+            pkg-config \
+            shunit2 \
+            check \
+            libglib2.0-dev \
+            cppcheck \
+            valgrind \
+            gcovr
+
+      - name: Run tests
+        run: ./test/run_tests.sh
