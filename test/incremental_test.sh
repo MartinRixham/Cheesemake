@@ -119,6 +119,70 @@ testChangingAHeaderRecompilesEverySourceThatIncludesIt()
 	assert_output_contains '-c -o build/test/greeting_test.o'
 }
 
+# A header can include a header. The sources above the bottom of the chain
+# never name it, but a change to a struct there changes their layout too, so
+# they have to be compiled again or what is left behind is stale.
+testChangingAHeaderIncludedByAHeaderRecompilesTheSourcesAboveIt()
+{
+	write "$PROJECT/src/words.h" <<'EOF'
+#define WORD "hello"
+EOF
+	write "$PROJECT/src/greeting.h" <<'EOF'
+#include "words.h"
+
+char *greeting(void);
+EOF
+
+	run_cheesemake package
+	assert_status 0
+
+	change_source src/words.h
+
+	run_cheesemake package
+
+	assert_status 0
+	assert_output_contains '-c -o build/src/greeting.o'
+	assert_output_contains '-c -o build/src/greeter.o'
+	assert_output_contains '-c -o build/test/greeting_test.o'
+}
+
+# Headers guarded against being included twice are free to include each other,
+# and the chain the hash follows has to stop when it comes back around.
+testHeadersThatIncludeEachOtherDoNotStallTheBuild()
+{
+	write "$PROJECT/src/one.h" <<'EOF'
+#ifndef ONE_H
+#define ONE_H
+
+#include "other.h"
+
+#endif
+EOF
+	write "$PROJECT/src/other.h" <<'EOF'
+#ifndef OTHER_H
+#define OTHER_H
+
+#include "one.h"
+
+#endif
+EOF
+	write "$PROJECT/src/greeting.h" <<'EOF'
+#include "one.h"
+
+char *greeting(void);
+EOF
+
+	run_cheesemake package
+	assert_status 0
+
+	change_source src/other.h
+
+	run_cheesemake package
+
+	assert_status 0
+	assert_output_contains '-c -o build/src/greeting.o'
+}
+
 testChangingATestRecompilesOnlyTheTest()
 {
 	run_cheesemake test

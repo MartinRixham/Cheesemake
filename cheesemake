@@ -246,31 +246,32 @@ first()
 	echo "$1"
 }
 
-first_directory()
-{
-	echo "$1" | tr '/' ' ' | map first
-}
-
 header_file()
 {
-	echo "$(dirname "$1")/$2"
-	echo "$(dirname "$1" | map first_directory)/$2"
-}
+	local directory=.
 
-shift_directory()
-{
-	shift
-	echo "$@"
+	if [[ "$1" == */* ]]; then
+		directory="${1%/*}"
+	fi
+
+	echo "$directory/$2"
+	echo "${directory%%/*}/$2"
 }
 
 within_directory()
 {
-	echo "$1" | tr -d ' ' | tr '/' ' ' | map shift_directory | tr ' ' '/'
+	if [[ "$1" == */* ]]; then
+		echo "${1#*/}"
+	fi
 }
 
 find_header()
 {
-	local path="$(echo "$1" | map within_directory)"
+	local path=''
+
+	if [[ "$1" == */* ]]; then
+		path="${1#*/}"
+	fi
 
 	if [[ -f "$1" ]]; then
 		echo "$1"
@@ -286,10 +287,28 @@ match_includes()
 	sed -n "s/^[[:space:]]*#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"/\1/p" "$1"
 }
 
-with_headers()
+included_headers()
 {
 	match_includes "$1" | map header_file "$1" | map find_header
-	echo "$1"
+}
+
+exclude_lines()
+{
+	grep -Fxv "$1" || true
+}
+
+with_headers()
+{
+	local headers="$1"
+	local found="$1"
+
+	while [[ -n "$found" ]]; do
+		found="$(echo "$found" | map included_headers | sort -u | exclude_lines "$headers")"
+		headers="$headers
+$found"
+	done
+
+	echo "$headers" | non_empty | sort
 }
 
 read_file()
