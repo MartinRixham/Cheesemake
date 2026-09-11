@@ -5,7 +5,7 @@ one thing. Run `cmk run`, or whichever phase you want, in any of them.
 
 | Example | What it is about |
 | --- | --- |
-| [executable](executable) | a program, its tests, and the arguments it is run with |
+| [executable](executable) | a program, its tests, and the arguments the program and its tests are run with |
 | [shared-library](shared-library) | packaging sources as a shared object, and the headers that go with it |
 | [static-library](static-library) | packaging sources as an archive |
 | [modules](modules) | a project built from a module, which is built from a module of its own |
@@ -15,6 +15,10 @@ one thing. Run `cmk run`, or whichever phase you want, in any of them.
 `bottom`, the innermost module of [modules](modules), is packaged as a shared
 object and an archive at once, which is what `"packaging": "shared,archive"`
 is for.
+
+The program of [executable](executable) is run with the `args` of the recipe,
+and its tests are run with the `args` of the `test` object, which is what
+`"test": {"args": "hello"}` is for.
 
 The `version` plugin that [plugins](plugins) configures is asked only for a
 minimum and a maximum, so that the example builds whatever version of check is

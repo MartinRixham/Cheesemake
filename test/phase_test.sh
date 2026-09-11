@@ -59,6 +59,34 @@ testTestExecutablesAreLinkedWithoutTheApplicationMain()
 	assert_lacks "$(output_line 'gcc -o build/test/greeting_test ')" 'build/src/greeter.o'
 }
 
+testTestExecutablesAreRunWithTheRecipeTestArguments()
+{
+	run_cheesemake test
+
+	assert_status 0
+	assert_output_contains 'build/test/greeting_test hello'
+}
+
+testTestExecutablesAreRunWithoutArgumentsWhenTheRecipeHasNone()
+{
+	edit_recipe 'del(.test)'
+
+	run_cheesemake test
+
+	assert_status 0
+	assert_output_contains 'build/test/greeting_test'
+	assert_output_lacks 'build/test/greeting_test hello'
+}
+
+testTestArgumentsAreNotThoseTheExecutableIsRunWith()
+{
+	run_cheesemake run
+
+	assert_status 0
+	assert_output_contains 'build/test/greeting_test hello'
+	assert_output_contains 'build/bin/greeter world'
+}
+
 testPackageCreatesTheExecutableAndCopiesHeaders()
 {
 	run_cheesemake package

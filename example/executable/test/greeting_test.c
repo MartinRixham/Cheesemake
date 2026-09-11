@@ -2,9 +2,11 @@
 
 #include "greeting.h"
 
-int main(void)
+int main(int argc, char **argv)
 {
-	if (strcmp(greeting(), "hello") != 0)
+	char *expected = argc > 1 ? argv[1] : "hello";
+
+	if (strcmp(greeting(), expected) != 0)
 	{
 		return 1;
 	}

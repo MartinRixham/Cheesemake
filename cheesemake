@@ -672,9 +672,19 @@ link_tests()
 	get_sources test | map get_output | filter is_executable_object | map get_executable_and_object | parmap link blank get_test_objects identity
 }
 
+get_test_arguments()
+{
+	jq -r .test.args "$RECIPE" | not is_null
+}
+
+run_test()
+{
+	verbose $1 $(get_test_arguments)
+}
+
 run_tests()
 {
-	get_sources test | map get_output | filter is_executable_object | map get_executable | map verbose
+	get_sources test | map get_output | filter is_executable_object | map get_executable | map run_test
 }
 
 test_recipe()
