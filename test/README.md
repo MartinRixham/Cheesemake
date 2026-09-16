@@ -15,9 +15,9 @@ instead.
 
 Whatever cheesemake needs (Bash, jq, pkg-config, OpenSSL, gcc, binutils),
 whatever the examples need (glib-2.0 and check for `dependencies`, check and
-cppcheck and valgrind and gcovr and gprof for `plugins`) plus shunit2. If
-shunit2 is not in one of the usual places, set `SHUNIT2` to the path of the
-script.
+cppcheck and clang-tidy and valgrind and gcovr and gprof for `plugins`) plus
+shunit2. If shunit2 is not in one of the usual places, set `SHUNIT2` to the
+path of the script.
 
 ### Run
 

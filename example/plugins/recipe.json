@@ -29,6 +29,15 @@
 				"phase": "validate"
 			},
 			{
+				"name": "clang-tidy",
+				"phase": "validate",
+				"config":
+					{
+						"checks": "-*,bugprone-*,clang-analyzer-*",
+						"warnings-as-errors": "*"
+					}
+			},
+			{
 				"name": "lines",
 				"phase": "validate",
 				"config":

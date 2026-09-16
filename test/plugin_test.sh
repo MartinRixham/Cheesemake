@@ -266,12 +266,222 @@ testCppcheckChecksEverythingAgainWhenItsOptionsChange()
 	assert_output_contains 'Checking test/numbers_test.c'
 }
 
+# clang-tidy remembers what passed in build/clang-tidy, as cppcheck does, but
+# source by source, so that a source that fails does not cost the others that
+# passed alongside it another check.
+
+CLANG_TIDY='clang-tidy --checks=-*,bugprone-*,clang-analyzer-* --warnings-as-errors=*'
+
+# The line clang-tidy prints for a source it checks, up to its flags.
+clang_tidy_line()
+{
+	echo "$CLANG_TIDY $1 -- "
+}
+
+# A source clang-tidy rejects, with identical branches, and cppcheck does not,
+# so that cppcheck does not stop the build before clang-tidy gets to it.
+write_unclear_source()
+{
+	write "$PROJECT/src/unclear.c" <<'EOF'
+int unclear(int a)
+{
+	if (a)
+	{
+		return 1;
+	}
+	else
+	{
+		return 1;
+	}
+}
+EOF
+}
+
+testClangTidyChecksEverySourceWithTheFlagsItIsCompiledWith()
+{
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains "$(clang_tidy_line src/analysis.c)-Isrc -Ibuild/include"
+	assert_output_contains "$(clang_tidy_line src/numbers.c)-Isrc -Ibuild/include"
+	assert_output_contains "$(clang_tidy_line test/numbers_test.c)-Itest -Isrc -Ibuild/include"
+}
+
+testClangTidyIsGivenTheDefinesOfTheRecipe()
+{
+	edit_recipe '.define = { "NDEBUG": "true" }'
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains "$(clang_tidy_line src/analysis.c)-DNDEBUG -Isrc"
+}
+
+testClangTidyDoesNotCheckASourceThatHasNotChanged()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_lacks 'clang-tidy'
+}
+
+testClangTidyChecksOnlyTheSourceThatChanged()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	change_source src/numbers.c
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains "$(clang_tidy_line src/numbers.c)"
+	assert_output_lacks "$(clang_tidy_line src/analysis.c)"
+	assert_output_lacks "$(clang_tidy_line test/numbers_test.c)"
+}
+
+testClangTidyChecksEverySourceThatIncludesAChangedHeader()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	change_source src/numbers.h
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains "$(clang_tidy_line src/analysis.c)"
+	assert_output_contains "$(clang_tidy_line src/numbers.c)"
+	assert_output_contains "$(clang_tidy_line test/numbers_test.c)"
+}
+
+testClangTidyFailureStopsTheBuild()
+{
+	write_unclear_source
+
+	run_cheesemake compile
+
+	assert_failed
+	assert_output_contains 'bugprone-branch-clone'
+	assert_output_lacks '-c -o build/src/analysis.o'
+}
+
+testClangTidyChecksOnlyARejectedSourceAgain()
+{
+	write_unclear_source
+
+	run_cheesemake validate
+	assert_failed
+
+	run_cheesemake validate
+
+	assert_failed
+	assert_output_contains "$(clang_tidy_line src/unclear.c)"
+	assert_output_lacks "$(clang_tidy_line src/analysis.c)"
+	assert_output_lacks "$(clang_tidy_line src/numbers.c)"
+}
+
+testClangTidyStopsCheckingARejectedSourceOnceItPasses()
+{
+	write_unclear_source
+
+	run_cheesemake validate
+	assert_failed
+
+	write "$PROJECT/src/unclear.c" <<'EOF'
+int unclear(int a)
+{
+	return a;
+}
+EOF
+
+	run_cheesemake validate
+	assert_status 0
+	assert_output_contains "$(clang_tidy_line src/unclear.c)"
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_lacks 'clang-tidy'
+}
+
+testClangTidyChecksEverythingAgainWhenItsChecksChange()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	edit_recipe '.plugins |= map(if .name == "clang-tidy" then .config.checks = "-*,clang-analyzer-*" else . end)'
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'clang-tidy --checks=-*,clang-analyzer-* --warnings-as-errors=* src/analysis.c'
+	assert_output_contains 'clang-tidy --checks=-*,clang-analyzer-* --warnings-as-errors=* src/numbers.c'
+	assert_output_contains 'clang-tidy --checks=-*,clang-analyzer-* --warnings-as-errors=* test/numbers_test.c'
+}
+
+testClangTidyWarningsAreNotErrorsUnlessConfigured()
+{
+	edit_recipe '.plugins |= map(if .name == "clang-tidy" then del(.config["warnings-as-errors"]) else . end)'
+	write_unclear_source
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'bugprone-branch-clone'
+}
+
+testClangTidyIsGivenItsOtherOptionsAsTheyAre()
+{
+	edit_recipe '.plugins |= map(if .name == "clang-tidy" then .config.options = "--quiet --extra-arg=-std=c11" else . end)'
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'clang-tidy --checks=-*,bugprone-*,clang-analyzer-* --warnings-as-errors=* --quiet --extra-arg=-std=c11 src/analysis.c'
+}
+
+testClangTidyWithoutConfigurationLeavesItToTheConfigurationFile()
+{
+	edit_recipe '.plugins |= map(if .name == "clang-tidy" then del(.config) else . end)'
+	write "$PROJECT/.clang-tidy" <<'EOF'
+Checks: '-*,bugprone-*'
+EOF
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains 'clang-tidy src/analysis.c -- '
+}
+
+testClangTidyChecksEverythingAgainWhenItsConfigurationFileChanges()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	write "$PROJECT/.clang-tidy" <<'EOF'
+CheckOptions:
+  bugprone-branch-clone.IgnoreCaseWithSingleStatement: true
+EOF
+
+	run_cheesemake validate
+
+	assert_status 0
+	assert_output_contains "$(clang_tidy_line src/analysis.c)"
+	assert_output_contains "$(clang_tidy_line src/numbers.c)"
+	assert_output_contains "$(clang_tidy_line test/numbers_test.c)"
+}
+
 testEveryPluginTheExampleConfiguresRuns()
 {
 	run_cheesemake verify
 
 	assert_status 0
 	assert_output_contains 'Checking src/analysis.c'
+	assert_output_contains "$(clang_tidy_line src/analysis.c)"
 	assert_output_contains 'lines of source in analysis'
 	assert_output_contains 'valgrind --leak-check=yes build/bin/analysis this that tother'
 	assert_output_contains 'gcovr -s -r .'

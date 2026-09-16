@@ -1,0 +1,76 @@
+#!/bin/bash
+
+CHECKED=build/clang-tidy
+
+config="$*"
+
+named_option()
+{
+	echo "$config" | jq -r --arg key "$1" '.[$key] // empty | "--\($key)=\(.)"'
+}
+
+read -r -a options <<< "$(named_option checks) $(named_option warnings-as-errors) $(echo "$config" | jq -r '.options // empty')"
+defines="$(get_defines)"
+source_includes="-Isrc -Ibuild/include $(get_includes source_dependencies)"
+test_includes="-Isrc -Ibuild/include $(get_includes identity)"
+
+configuration()
+{
+	echo "${options[*]}"
+	echo "$defines"
+	echo "$source_includes"
+	echo "$test_includes"
+	find . -path ./build -prune -o -name .clang-tidy -print | sort | map read_file
+}
+
+key="$(configuration | openssl dgst -r)"
+
+checked_before()
+{
+	if [[ -f "$CHECKED" ]] && [[ "$(head -n 1 "$CHECKED")" == "$key" ]]; then
+		tail -n +2 "$CHECKED"
+	fi
+}
+
+source_flags()
+{
+	if [[ "$1" == test/* ]]; then
+		echo "$(include_source "$1") $test_includes"
+	else
+		echo "$source_includes"
+	fi
+}
+
+tidy()
+{
+	local flags
+	local output
+	read -r -a flags <<< "$defines $(source_flags "$1")"
+	local command=(clang-tidy "${options[@]}" "$1" -- "${flags[@]}")
+
+	if output="$("${command[@]}" 2>&1)"; then
+		generate_hash "$1" >> "$CHECKED"
+	fi
+
+	echo "${command[*]}
+$output"
+}
+
+hashes="$(all_sources | map generate_hash | sort)"
+
+if [[ -z "$hashes" ]]; then
+	exit 0
+fi
+
+passed="$(checked_before | sort -u | grep -Fx -f <(echo "$hashes") || true)"
+
+{
+	echo "$key"
+	echo "$passed"
+} | non_empty > "$CHECKED"
+
+echo "$hashes" | diff -u - <(echo "$passed") | filter new_hash | map hash_name | parmap tidy
+
+if ! echo "$hashes" | diff -q - <(checked_before | sort -u) > /dev/null; then
+	exit 1
+fi
