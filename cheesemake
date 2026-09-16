@@ -246,18 +246,6 @@ first()
 	echo "$1"
 }
 
-header_file()
-{
-	local directory=.
-
-	if [[ "$1" == */* ]]; then
-		directory="${1%/*}"
-	fi
-
-	echo "$directory/$2"
-	echo "${directory%%/*}/$2"
-}
-
 within_directory()
 {
 	if [[ "$1" == */* ]]; then
@@ -265,50 +253,77 @@ within_directory()
 	fi
 }
 
+INCLUDE_PATTERN='^[[:space:]]*#[[:space:]]*include[[:space:]]+"(.+)"'
+
 find_header()
 {
-	local path=''
+	local -n found_headers=$3
+	local directory=.
+	local candidate
+	local path
 
 	if [[ "$1" == */* ]]; then
-		path="${1#*/}"
+		directory="${1%/*}"
 	fi
 
-	if [[ -f "$1" ]]; then
-		echo "$1"
-	elif [[ -f  "src/$path" ]]; then
-		echo "src/$path"
-	elif [[ -f "build/include/$path" ]]; then
-		echo "build/include/$path"
-	fi
-}
+	for candidate in "$directory/$2" "${directory%%/*}/$2"; do
+		path="${candidate#*/}"
 
-match_includes()
-{
-	sed -n "s/^[[:space:]]*#[[:space:]]*include[[:space:]]\{1,\}\"\(.\{1,\}\)\"/\1/p" "$1"
+		if [[ -f "$candidate" ]]; then
+			found_headers+=("$candidate")
+		elif [[ -f "src/$path" ]]; then
+			found_headers+=("src/$path")
+		elif [[ -f "build/include/$path" ]]; then
+			found_headers+=("build/include/$path")
+		fi
+	done
 }
 
 included_headers()
 {
-	match_includes "$1" | map header_file "$1" | map find_header
-}
+	local lines
+	local line
+	local include
+	local rest
 
-exclude_lines()
-{
-	grep -Fxv "$1" || true
+	mapfile -t lines < "$1"
+
+	for line in "${lines[@]}"; do
+		if [[ "$line" == *include* && "$line" =~ $INCLUDE_PATTERN ]]; then
+			read -r include rest <<< "${BASH_REMATCH[1]}${line:${#BASH_REMATCH[0]}}"
+
+			if [[ -n "$include" ]]; then
+				find_header "$1" "$include" "$2"
+			fi
+		fi
+	done
 }
 
 with_headers()
 {
-	local headers="$1"
-	local found="$1"
+	local -A seen=(["$1"]=1)
+	local pending=("$1")
+	local included
+	local header
 
-	while [[ -n "$found" ]]; do
-		found="$(echo "$found" | map included_headers | sort -u | exclude_lines "$headers")"
-		headers="$headers
-$found"
+	while [[ ${#pending[@]} -gt 0 ]]; do
+		included=()
+
+		for header in "${pending[@]}"; do
+			included_headers "$header" included
+		done
+
+		pending=()
+
+		for header in "${included[@]}"; do
+			if [[ -z "${seen[$header]-}" ]]; then
+				seen[$header]=1
+				pending+=("$header")
+			fi
+		done
 	done
 
-	echo "$headers" | non_empty | sort
+	printf '%s\n' "${!seen[@]}" | sort
 }
 
 read_file()
@@ -318,13 +333,19 @@ read_file()
 
 generate_hash()
 {
-	echo "$1" | map with_headers | map read_file | echo "$1" "$(cat | openssl dgst -r)" | map format_hash
+	local files
+	local hash
+	local rest
+
+	mapfile -t files < <(with_headers "$1")
+	read -r hash rest < <(cat "${files[@]}" 2> /dev/null | openssl dgst -r)
+	format_hash "$1" "$hash"
 }
 
 module_sources()
 {
 	get_modules | map hash_submodule
-	all_sources | map generate_hash
+	all_sources | parmap generate_hash
 }
 
 hash_module()
@@ -530,7 +551,7 @@ compile()
 
 get_missing_sources()
 {
-	get_sources "$1" | map generate_hash | sort | diff -u - <(sort build/hashes) | filter new_hash | map hash_name
+	get_sources "$1" | parmap generate_hash | sort | diff -u - <(sort build/hashes) | filter new_hash | map hash_name
 }
 
 make_directory()

@@ -56,7 +56,7 @@ tidy()
 $output"
 }
 
-hashes="$(all_sources | map generate_hash | sort)"
+hashes="$(all_sources | parmap generate_hash | sort)"
 
 if [[ -z "$hashes" ]]; then
 	exit 0
