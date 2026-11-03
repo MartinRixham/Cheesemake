@@ -48,6 +48,20 @@ testFailingTestStopsTheBuildBeforePackaging()
 	assert_no_file build/bin/greeter
 }
 
+testCompilationErrorAmongManyParallelCompilesStopsTheBuild()
+{
+	# One failure among many compiles is hardly ever the last one waited for.
+	generate_sources src extra
+	break_source src/extra1.c
+
+	run_cheesemake package
+
+	assert_status 1
+	assert_no_file build/src/extra1.o
+	assert_no_file build/bin/greeter
+	assert_output_lacks 'interrupted'
+}
+
 testLinkErrorStopsTheBuild()
 {
 	rm "$PROJECT/test/greeting_test.c"

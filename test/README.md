@@ -13,7 +13,7 @@ instead.
 
 ### Dependencies
 
-Whatever cheesemake needs (Bash, jq, pkg-config, OpenSSL, gcc, binutils),
+Whatever cheesemake needs (Bash, jq, pkg-config, OpenSSL, pgrep, gcc, binutils),
 whatever the examples need (glib-2.0 and check for `dependencies`, check and
 cppcheck and clang-tidy and valgrind and gcovr and gprof for `plugins`) plus
 shunit2. If shunit2 is not in one of the usual places, set `SHUNIT2` to the
@@ -35,4 +35,5 @@ path of the script.
 | `plugin_test.sh` | where plugins are found, what they are passed, what their failure does | `plugins` |
 | `module_test.sh` | module build order, propagation of binaries, rebuilding, failure | `modules` |
 | `incremental_test.sh` | what the hashes in `build/hashes` cause to be compiled again | `executable`, `shared-library` |
-| `failure_test.sh` | compilation, test, link and recipe failures | `executable` |
+| `failure_test.sh` | compilation, parallel compilation, test, link and recipe failures | `executable` |
+| `interrupt_test.sh` | what SIGINT and SIGTERM do to a build under way, what they leave running and behind | `executable` |

@@ -26,17 +26,34 @@ map()
 parmap()
 {
 	local pids=()
+	local pid
+	local status
+
+	trap : INT
 
 	while read -r line; do
 		if [[ -n $line ]]; then
-			$@ $line &
+			(trap - INT QUIT; $@ $line) &
 			pids+=($!)
 		fi
 	done
 
 	for pid in ${pids[@]}; do
-		wait "$pid"
+		status=0
+		wait "$pid" || status=$?
+
+		while kill -0 "$pid" 2> /dev/null; do
+			status=0
+			wait "$pid" || status=$?
+		done
+
+		if [[ $status -ne 0 ]]; then
+			trap - INT
+			return "$status"
+		fi
 	done
+
+	trap - INT
 }
 
 filter()
@@ -827,10 +844,46 @@ do_task()
 	esac
 }
 
-for task in "$@"; do
-	do_task "$task"
-done
+build()
+{
+	trap - INT QUIT
 
-if [[ $# -eq 0 ]]; then
-	print_usage
-fi
+	for task in "$@"; do
+		do_task "$task"
+	done
+
+	if [[ $# -eq 0 ]]; then
+		print_usage
+	fi
+}
+
+stop_tree()
+{
+	local child
+
+	kill -STOP "$1" 2> /dev/null || return 0
+	echo "$1"
+
+	for child in $(pgrep -P "$1"); do
+		stop_tree "$child"
+	done
+}
+
+interrupt()
+{
+	local processes
+
+	trap - "$1"
+	processes="$(stop_tree "$BUILD")"
+	kill -TERM $processes 2> /dev/null || true
+	kill -CONT $processes 2> /dev/null || true
+	wait "$BUILD" 2> /dev/null || true
+	echo "$SCRIPT_NAME: interrupted" >&2
+	kill -"$1" $$
+}
+
+build "$@" <&0 &
+BUILD=$!
+trap 'interrupt INT' INT
+trap 'interrupt TERM' TERM
+wait "$BUILD"

@@ -10,6 +10,7 @@ Read the [article](https://www.infoq.com/articles/cheesemake-c-build-system).
 * jq
 * pkg-config
 * OpenSSL
+* pgrep (procps)
 
 ### Install
 
