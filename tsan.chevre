@@ -1,20 +1,36 @@
 #!/bin/bash
 
+dir=build/tsan
 name="$(get_executable_name)"
 compiler="$(get_compiler)"
-defines="$(get_defines)"
-includes="-Isrc -Ibuild/include $(get_includes source_dependencies)"
-links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
+sanitizers="-fsanitize=thread -fno-omit-frame-pointer"
 flags="$(echo "$@" | jq -r .flags | not is_null)"
+command="$compiler $sanitizers $flags $(get_defines) -Isrc -Ibuild/include $(get_includes source_dependencies)"
+links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
 options="$(echo "$@" | jq -r .options | not is_null)"
 args="$(echo "$@" | jq -r .args | not is_null)"
 
-mkdir -p build/tsan/build/bin
-copy_all src build/tsan
-test ! -d build/lib || copy_all build/lib build/tsan/build
-test ! -d build/include || copy_all build/include build/tsan/build
+compile()
+{
+	verbose $command -c -o $(get_output "$1") $1
+	generate_hash "$1" >> build/hashes
+}
 
-cd build/tsan
-verbose $compiler -fsanitize=thread -fno-omit-frame-pointer $flags $defines -o $name $includes $(get_sources src) $links
+mkdir -p $dir/build/bin
+rm -rf $dir/src $dir/build/lib $dir/build/include
+copy_all src $dir
+test ! -d build/lib || copy_all build/lib $dir/build
+test ! -d build/include || copy_all build/include $dir/build
+
+cd $dir
+
+if [[ "$(cat build/command 2> /dev/null)" != "$command" ]]; then
+	rm -rf build/hashes build/src
+	echo "$command" > build/command
+fi
+
+filter_old_hashes has_object
+get_missing_sources src | map remove_hash | map make_directory | parmap compile
+verbose $compiler $sanitizers $flags -o $name $(get_sources src | map get_output) $links
 echo "TSAN_OPTIONS=$options $name $args"
 TSAN_OPTIONS="$options" $name $args

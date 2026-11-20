@@ -13,22 +13,18 @@ msan_compiler()
 
 module_tree()
 {
-	(cd "$1"; pwd; get_modules | map module_tree)
-}
+	local module
 
-all_modules()
-{
-	get_modules | map module_tree
+	echo "$1"
+
+	for module in $(cd "$1"; get_modules); do
+		module_tree "$1/$module"
+	done
 }
 
 module_include()
 {
-	echo "-I$1/src"
-}
-
-module_source()
-{
-	get_sources "$1/src"
+	echo "-Imodules/$1/src"
 }
 
 module_link()
@@ -36,21 +32,56 @@ module_link()
 	(cd "$1"; get_links source_dependencies; get_static_links source_dependencies | non_empty | map link_statically)
 }
 
+copy_module()
+{
+	mkdir -p "$dir/modules/$1"
+	copy_all "$1/src" "$dir/modules/$1"
+}
+
+module_sources()
+{
+	get_sources "modules/$1/src"
+}
+
+dir=build/msan
 name="$(get_executable_name)"
 compiler="$(msan_compiler "$@") $(get_compiler | map rest)"
-defines="$(get_defines)"
-modules="$(all_modules)"
-includes="-Isrc $(echo "$modules" | map module_include) $(get_includes source_dependencies)"
-module_sources="$(echo "$modules" | map module_source)"
-links="$(echo "$modules" | map module_link) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
+sanitizers="-fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer"
 flags="$(echo "$@" | jq -r .flags | not is_null)"
+modules="$(get_modules | map module_tree)"
+command="$compiler $sanitizers $flags $(get_defines) -Isrc $(echo "$modules" | map module_include) $(get_includes source_dependencies)"
+links="$(echo "$modules" | map module_link) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
 options="$(echo "$@" | jq -r .options | not is_null)"
 args="$(echo "$@" | jq -r .args | not is_null)"
 
-mkdir -p build/msan/build/bin
-copy_all src build/msan
+compile()
+{
+	verbose $command -c -o $(get_output "$1") $1
+	generate_hash "$1" >> build/hashes
+}
 
-cd build/msan
-verbose $compiler -fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer $flags $defines -o $name $includes $(get_sources src) $module_sources $links
+all_msan_sources()
+{
+	get_sources src
+	echo "$modules" | map module_sources
+}
+
+mkdir -p $dir/build/bin
+rm -rf $dir/src $dir/modules $dir/build/include
+copy_all src $dir
+echo "$modules" | map copy_module
+# Not compiled against, but lets the hashes see changes to module headers.
+test ! -d build/include || copy_all build/include $dir/build
+
+cd $dir
+
+if [[ "$(cat build/command 2> /dev/null)" != "$command" ]]; then
+	rm -rf build/hashes build/src build/modules
+	echo "$command" > build/command
+fi
+
+filter_old_hashes has_object
+all_msan_sources | map generate_hash | sort | diff -u - <(sort build/hashes) | filter new_hash | map hash_name | map remove_hash | map make_directory | parmap compile
+verbose $compiler $sanitizers $flags -o $name $(all_msan_sources | map get_output) $links
 echo "MSAN_OPTIONS=$options $name $args"
 MSAN_OPTIONS="$options" $name $args
