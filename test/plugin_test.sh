@@ -84,7 +84,7 @@ testPluginWithoutConfigurationReceivesNull()
 	run_cheesemake validate
 
 	assert_status 0
-	assert_output_contains 'cppcheck --error-exitcode=1  src/'
+	assert_output_contains 'cppcheck --cppcheck-build-dir=build/cppcheck --error-exitcode=1  -Isrc src/'
 }
 
 testPluginCanUseTheFunctionsOfTheScript()
@@ -151,9 +151,41 @@ testVerificationPluginFailureStopsTheRun()
 	assert_output_lacks 'the number is 7'
 }
 
-# cppcheck remembers what passed in build/cppcheck, so that it only checks a
-# source that has changed since. All three sources of the example include
-# numbers.h.
+# cppcheck keeps its own cache in build/cppcheck, and is given every source on
+# every build so that it can analyse the whole program. It hashes a source as
+# preprocessed, so it is a change to the code, not to the comments, that has it
+# analyse a source again, and it says it is checking every source either way.
+# What it really analysed is told by which of its .a1 files it wrote. All three
+# sources of the example include numbers.h.
+
+# A change cppcheck cares about, unlike change_source.
+change_code()
+{
+	echo 'int changed(void);' >> "$PROJECT/$1"
+}
+
+# Starts the clock for analysed_sources.
+mark_analysis()
+{
+	touch "$WORK/analysis.mark"
+}
+
+# The sources cppcheck analysed since mark_analysis, one to a line, sorted.
+# files.txt maps each .a1 file to its source.
+analysed_sources()
+{
+	local a1
+
+	for a1 in $(cd "$PROJECT/build/cppcheck" && find . -name '*.a1' -newer "$WORK/analysis.mark"); do
+		grep "^${a1#./}:" "$PROJECT/build/cppcheck/files.txt" | sed 's/.*://'
+	done | sort
+}
+
+assert_analysed()
+{
+	assertEquals "unexpected sources analysed, output was:
+$OUTPUT" "$1" "$(analysed_sources)"
+}
 
 # A source cppcheck rejects, out of bounds by one.
 write_rejected_source()
@@ -170,63 +202,64 @@ int bad(void)
 EOF
 }
 
-testCppcheckDoesNotCheckASourceThatHasNotChanged()
+testCppcheckDoesNotAnalyseASourceThatHasNotChanged()
 {
 	run_cheesemake validate
 	assert_status 0
 	assert_output_contains 'Checking src/analysis.c'
 
+	mark_analysis
 	run_cheesemake validate
 
 	assert_status 0
-	assert_output_lacks 'cppcheck --error-exitcode=1'
+	assert_analysed ''
 }
 
-testCppcheckChecksOnlyTheSourceThatChanged()
+testCppcheckAnalysesOnlyTheSourceThatChanged()
 {
 	run_cheesemake validate
 	assert_status 0
 
-	change_source src/numbers.c
-
+	change_code src/numbers.c
+	mark_analysis
 	run_cheesemake validate
 
 	assert_status 0
-	assert_output_contains 'Checking src/numbers.c'
-	assert_output_lacks 'Checking src/analysis.c'
-	assert_output_lacks 'Checking test/numbers_test.c'
+	assert_analysed 'src/numbers.c'
 }
 
-testCppcheckChecksEverySourceThatIncludesAChangedHeader()
+testCppcheckAnalysesEverySourceThatIncludesAChangedHeader()
 {
 	run_cheesemake validate
 	assert_status 0
 
-	change_source src/numbers.h
-
+	change_code src/numbers.h
+	mark_analysis
 	run_cheesemake validate
 
 	assert_status 0
-	assert_output_contains 'Checking src/analysis.c'
-	assert_output_contains 'Checking src/numbers.c'
-	assert_output_contains 'Checking test/numbers_test.c'
+	assert_analysed 'src/analysis.c
+src/numbers.c
+test/numbers_test.c'
 }
 
-testCppcheckChecksARejectedSourceOnEveryBuild()
+testCppcheckRejectsARejectedSourceOnEveryBuild()
 {
 	write_rejected_source
 
 	run_cheesemake validate
 	assert_failed
-	assert_output_contains 'Checking src/bad.c'
+	assert_output_contains 'arrayIndexOutOfBounds'
 
+	mark_analysis
 	run_cheesemake validate
 
 	assert_failed
-	assert_output_contains 'Checking src/bad.c'
+	assert_output_contains 'arrayIndexOutOfBounds'
+	assert_analysed ''
 }
 
-testCppcheckStopsCheckingARejectedSourceOnceItPasses()
+testCppcheckPassesARejectedSourceOnceItIsFixed()
 {
 	write_rejected_source
 
@@ -240,35 +273,59 @@ int bad(void)
 }
 EOF
 
-	run_cheesemake validate
-	assert_status 0
-	assert_output_contains 'Checking src/bad.c'
-
+	mark_analysis
 	run_cheesemake validate
 
 	assert_status 0
-	assert_output_lacks 'cppcheck --error-exitcode=1'
+	assert_analysed 'src/bad.c'
 }
 
-testCppcheckChecksEverythingAgainWhenItsOptionsChange()
+# clang-tidy is told to look away from it too, so that it is cppcheck alone
+# that passes or fails the build.
+testCppcheckAppliesItsOptionsToWhatItHasCached()
 {
+	write "$PROJECT/src/bad.c" <<'EOF'
+int bad(void)
+{
+	int a[2];
+
+	// cppcheck-suppress arrayIndexOutOfBounds
+	a[3] = 1; // NOLINT
+
+	return a[0];
+}
+EOF
+
 	run_cheesemake validate
-	assert_status 0
+	assert_failed
 
 	edit_recipe '.plugins |= map(if .name == "cppcheck" then .config = { "options": "--inline-suppr" } else . end)'
 
 	run_cheesemake validate
 
 	assert_status 0
-	assert_output_contains 'cppcheck --error-exitcode=1 --inline-suppr'
-	assert_output_contains 'Checking src/analysis.c'
-	assert_output_contains 'Checking src/numbers.c'
-	assert_output_contains 'Checking test/numbers_test.c'
+	assert_output_contains 'cppcheck --cppcheck-build-dir=build/cppcheck --error-exitcode=1 --inline-suppr'
 }
 
-# clang-tidy remembers what passed in build/clang-tidy, as cppcheck does, but
-# source by source, so that a source that fails does not cost the others that
-# passed alongside it another check.
+testCppcheckAnalysesEverythingAgainWhenItsOptionsChange()
+{
+	run_cheesemake validate
+	assert_status 0
+
+	edit_recipe '.plugins |= map(if .name == "cppcheck" then .config = { "options": "-DCHANGED" } else . end)'
+
+	mark_analysis
+	run_cheesemake validate
+
+	assert_status 0
+	assert_analysed 'src/analysis.c
+src/numbers.c
+test/numbers_test.c'
+}
+
+# clang-tidy remembers what passed in build/clang-tidy, source by source, so
+# that a source that fails does not cost the others that passed alongside it
+# another check.
 
 CLANG_TIDY='clang-tidy --checks=-*,bugprone-*,clang-analyzer-* --warnings-as-errors=*'
 

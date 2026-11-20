@@ -1,31 +1,22 @@
 #!/bin/bash
 
+# cppcheck keeps its own cache in build/cppcheck: it hashes each source as
+# preprocessed, with the options that bear on the analysis, and replays the
+# results of any source whose hash has not moved, errors and all. Every source
+# is given to it on every build, so that it can analyse the whole program.
+
 CHECKED=build/cppcheck
 
 options="$(echo "$@" | jq -r .options | not is_null)"
 
-checked_before()
-{
-	if [[ -f "$CHECKED" ]] && [[ "$(head -n 1 "$CHECKED")" == "$options" ]]; then
-		tail -n +2 "$CHECKED"
-	fi
-}
-
-hashes="$(all_sources | parmap generate_hash | sort)"
-
-if [[ -z "$hashes" ]]; then
-	exit 0
-fi
-
-sources="$(echo "$hashes" | diff -u - <(checked_before | sort) | filter new_hash | map hash_name)"
+sources="$(all_sources)"
 
 if [[ -z "$sources" ]]; then
 	exit 0
 fi
 
-verbose cppcheck --error-exitcode=1 "$options" $sources
+mkdir -p "$CHECKED"
 
-{
-	echo "$options"
-	echo "$hashes"
-} > "$CHECKED"
+# A test includes the headers of the sources it tests from src, and a header
+# cppcheck cannot find is not in the hash of what includes it.
+verbose cppcheck --cppcheck-build-dir="$CHECKED" --error-exitcode=1 "$options" -Isrc $sources
