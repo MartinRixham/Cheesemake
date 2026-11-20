@@ -54,6 +54,15 @@
 					}
 			},
 			{
+				"name": "asan",
+				"phase": "verify",
+				"config":
+					{
+						"options": "detect_leaks=1",
+						"args": "this that tother"
+					}
+			},
+			{
 				"name": "gcovr",
 				"phase": "verify"
 			},
