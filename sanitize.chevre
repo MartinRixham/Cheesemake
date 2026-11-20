@@ -1,0 +1,21 @@
+#!/bin/bash
+
+name="$(get_executable_name)"
+compiler="$(get_compiler)"
+defines="$(get_defines)"
+includes="-Isrc -Ibuild/include $(get_includes source_dependencies)"
+links="-Lbuild/lib $(get_module_links source_dependencies) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
+flags="$(echo "$@" | jq -r .flags | not is_null)"
+asan_options="$(echo "$@" | jq -r '.["asan-options"]' | not is_null)"
+ubsan_options="$(echo "$@" | jq -r '.["ubsan-options"]' | not is_null)"
+args="$(echo "$@" | jq -r .args | not is_null)"
+
+mkdir -p build/sanitize/build/bin
+copy_all src build/sanitize
+test ! -d build/lib || copy_all build/lib build/sanitize/build
+test ! -d build/include || copy_all build/include build/sanitize/build
+
+cd build/sanitize
+verbose $compiler -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer $flags $defines -o $name $includes $(get_sources src) $links
+echo "ASAN_OPTIONS=$asan_options UBSAN_OPTIONS=$ubsan_options $name $args"
+ASAN_OPTIONS="$asan_options" UBSAN_OPTIONS="$ubsan_options" $name $args

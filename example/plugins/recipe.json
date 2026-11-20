@@ -54,20 +54,12 @@
 					}
 			},
 			{
-				"name": "asan",
+				"name": "sanitize",
 				"phase": "verify",
 				"config":
 					{
-						"options": "detect_leaks=1",
-						"args": "this that tother"
-					}
-			},
-			{
-				"name": "ubsan",
-				"phase": "verify",
-				"config":
-					{
-						"options": "print_stacktrace=1",
+						"asan-options": "detect_leaks=1",
+						"ubsan-options": "print_stacktrace=1",
 						"args": "this that tother"
 					}
 			},
