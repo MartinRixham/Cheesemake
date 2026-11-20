@@ -475,6 +475,393 @@ EOF
 	assert_output_contains "$(clang_tidy_line test/numbers_test.c)"
 }
 
+# The sanitizer plugins, sanitize (ASan with UBSan), msan and tsan, each build
+# the program again under build/<plugin> with their sanitizer and run it. Each
+# remembers what it compiled in its own build/hashes, as the build does, and
+# compiles everything again when the command it compiles with changes.
+
+ASAN='-fsanitize=address,undefined'
+MSAN='-fsanitize=memory'
+TSAN='-fsanitize=thread'
+
+# Leaves the one plugin being tested, as the example configures it, so that
+# no other plugin gets to a bug before it does.
+only_plugin()
+{
+	edit_recipe ".plugins |= map(select(.name == \"$1\"))"
+}
+
+# The sources the last run compiled with the given sanitizer, by name.
+sanitized_sources()
+{
+	echo "$OUTPUT" | grep -F -- "$1" | grep -F -- ' -c -o ' | awk '{ print $NF }' | sort | tr '\n' ' ' | sed 's/ $//'
+}
+
+# assert_sanitized <sanitizer> <sources>
+assert_sanitized()
+{
+	assertEquals "unexpected sources compiled with $1, output was:
+$OUTPUT" "$2" "$(sanitized_sources "$1")"
+}
+
+# A bug that only shows when the program runs, in a source of its own that
+# runs it before main, so that the sources of the example stay as they are.
+write_bug()
+{
+	write "$PROJECT/src/bug.c"
+}
+
+# sanitizer_compiles_nothing_that_has_not_changed <plugin> <sanitizer>
+sanitizer_compiles_nothing_that_has_not_changed()
+{
+	only_plugin "$1"
+
+	run_cheesemake verify
+	assert_status 0
+	assert_sanitized "$2" 'src/analysis.c src/numbers.c'
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_sanitized "$2" ''
+	assert_output_contains 'the number is 7'
+}
+
+# sanitizer_compiles_only_the_source_that_changed <plugin> <sanitizer>
+sanitizer_compiles_only_the_source_that_changed()
+{
+	only_plugin "$1"
+
+	run_cheesemake verify
+	assert_status 0
+
+	change_source src/numbers.c
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_sanitized "$2" 'src/numbers.c'
+}
+
+# sanitizer_compiles_every_source_that_includes_a_changed_header <plugin> <sanitizer>
+sanitizer_compiles_every_source_that_includes_a_changed_header()
+{
+	only_plugin "$1"
+
+	run_cheesemake verify
+	assert_status 0
+
+	change_source src/numbers.h
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_sanitized "$2" 'src/analysis.c src/numbers.c'
+}
+
+# sanitizer_compiles_everything_again_when_its_flags_change <plugin> <sanitizer>
+sanitizer_compiles_everything_again_when_its_flags_change()
+{
+	only_plugin "$1"
+
+	run_cheesemake verify
+	assert_status 0
+
+	edit_recipe ".plugins |= map(if .name == \"$1\" then .config.flags = \"-O1\" else . end)"
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_output_contains "$2"
+	assert_output_contains '-O1 -Isrc'
+	assert_sanitized "$2" 'src/analysis.c src/numbers.c'
+}
+
+testSanitizeCompilesNothingThatHasNotChanged()
+{
+	sanitizer_compiles_nothing_that_has_not_changed sanitize "$ASAN"
+}
+
+testSanitizeCompilesOnlyTheSourceThatChanged()
+{
+	sanitizer_compiles_only_the_source_that_changed sanitize "$ASAN"
+}
+
+testSanitizeCompilesEverySourceThatIncludesAChangedHeader()
+{
+	sanitizer_compiles_every_source_that_includes_a_changed_header sanitize "$ASAN"
+}
+
+testSanitizeCompilesEverythingAgainWhenItsFlagsChange()
+{
+	sanitizer_compiles_everything_again_when_its_flags_change sanitize "$ASAN"
+}
+
+testSanitizeFailsTheBuildOnAMemoryError()
+{
+	only_plugin sanitize
+	write_bug <<'EOF'
+#include <stdlib.h>
+
+__attribute__((constructor)) static void overflow(void)
+{
+	volatile char *bytes = malloc(2);
+
+	bytes[2] = 1;
+	free((void *) bytes);
+}
+EOF
+
+	run_cheesemake verify
+
+	assert_failed
+	assert_output_contains 'ERROR: AddressSanitizer: heap-buffer-overflow'
+}
+
+testSanitizeFailsTheBuildOnUndefinedBehaviour()
+{
+	only_plugin sanitize
+	write_bug <<'EOF'
+#include <limits.h>
+
+__attribute__((constructor)) static void overflow(void)
+{
+	volatile int big = INT_MAX;
+
+	big = big + 1;
+}
+EOF
+
+	run_cheesemake verify
+
+	assert_failed
+	assert_output_contains 'runtime error: signed integer overflow'
+}
+
+testSanitizeGivesTheProgramItsAsanOptions()
+{
+	only_plugin sanitize
+	write_bug <<'EOF'
+#include <stdlib.h>
+
+void *volatile leaked;
+
+__attribute__((constructor)) static void leak(void)
+{
+	leaked = malloc(8);
+	leaked = NULL;
+}
+EOF
+
+	run_cheesemake verify
+	assert_failed
+	assert_output_contains 'ERROR: LeakSanitizer: detected memory leaks'
+
+	edit_recipe '.plugins |= map(if .name == "sanitize" then .config["asan-options"] = "detect_leaks=0" else . end)'
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_output_contains 'ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 build/bin/analysis this that tother'
+}
+
+testMsanCompilesNothingThatHasNotChanged()
+{
+	sanitizer_compiles_nothing_that_has_not_changed msan "$MSAN"
+}
+
+testMsanCompilesOnlyTheSourceThatChanged()
+{
+	sanitizer_compiles_only_the_source_that_changed msan "$MSAN"
+}
+
+testMsanCompilesEverySourceThatIncludesAChangedHeader()
+{
+	sanitizer_compiles_every_source_that_includes_a_changed_header msan "$MSAN"
+}
+
+testMsanCompilesEverythingAgainWhenItsFlagsChange()
+{
+	sanitizer_compiles_everything_again_when_its_flags_change msan "$MSAN"
+}
+
+# Memory sanitizer is clang's, so msan compiles with clang, whatever the
+# recipe compiles with, but keeps the arguments the recipe gives its compiler.
+testMsanCompilesWithClangAndTheArgumentsOfTheRecipe()
+{
+	only_plugin msan
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_output_contains "clang -g -Wall $MSAN"
+}
+
+testMsanCompilesWithTheCompilerItIsConfiguredWith()
+{
+	local clang="$(command -v clang)"
+
+	only_plugin msan
+	edit_recipe ".plugins |= map(if .name == \"msan\" then .config.compiler = \"$clang\" else . end)"
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_output_contains "$clang -g -Wall $MSAN"
+}
+
+# A library built without memory sanitizer would hide what it does from msan,
+# so msan compiles the sources of every module along with those of the project.
+testMsanCompilesTheSourcesOfEveryModule()
+{
+	copy_example modules
+	edit_recipe '.plugins = [{ "name": "msan", "phase": "verify" }]'
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_sanitized "$MSAN" 'modules/middle/bottom/src/bottom.c modules/middle/src/middle.c src/subd/code.c src/top.c'
+	assert_output_contains '-Isrc -Imodules/middle/src -Imodules/middle/bottom/src'
+	assert_output_contains 'modules 11 1'
+}
+
+testMsanCompilesEverySourceThatIncludesAChangedHeaderOfAModule()
+{
+	copy_example modules
+	edit_recipe '.plugins = [{ "name": "msan", "phase": "verify" }]'
+
+	run_cheesemake verify
+	assert_status 0
+
+	change_source middle/bottom/src/bottom.h
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_sanitized "$MSAN" 'modules/middle/bottom/src/bottom.c modules/middle/src/middle.c src/top.c'
+}
+
+# An uninitialised read, which only memory sanitizer of the three sees.
+write_uninitialised_read()
+{
+	write_bug <<'EOF'
+#include <stdio.h>
+#include <stdlib.h>
+
+__attribute__((constructor)) static void uninitialised(void)
+{
+	int *number = malloc(sizeof *number);
+
+	if (*number)
+	{
+		puts("set");
+	}
+
+	free(number);
+}
+EOF
+}
+
+testMsanFailsTheBuildOnAnUninitialisedRead()
+{
+	only_plugin msan
+	write_uninitialised_read
+
+	run_cheesemake verify
+
+	assert_failed
+	assert_output_contains 'WARNING: MemorySanitizer: use-of-uninitialized-value'
+}
+
+testMsanGivesTheProgramItsOptions()
+{
+	only_plugin msan
+	edit_recipe '.plugins |= map(if .name == "msan" then .config.options = "exitcode=0" else . end)'
+	write_uninitialised_read
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_output_contains 'MSAN_OPTIONS=exitcode=0 build/bin/analysis this that tother'
+	assert_output_contains 'WARNING: MemorySanitizer: use-of-uninitialized-value'
+}
+
+testTsanCompilesNothingThatHasNotChanged()
+{
+	sanitizer_compiles_nothing_that_has_not_changed tsan "$TSAN"
+}
+
+testTsanCompilesOnlyTheSourceThatChanged()
+{
+	sanitizer_compiles_only_the_source_that_changed tsan "$TSAN"
+}
+
+testTsanCompilesEverySourceThatIncludesAChangedHeader()
+{
+	sanitizer_compiles_every_source_that_includes_a_changed_header tsan "$TSAN"
+}
+
+testTsanCompilesEverythingAgainWhenItsFlagsChange()
+{
+	sanitizer_compiles_everything_again_when_its_flags_change tsan "$TSAN"
+}
+
+# Two threads counting at once, enough times over that thread sanitizer always
+# sees them overlap.
+write_data_race()
+{
+	write_bug <<'EOF'
+#include <pthread.h>
+
+static volatile int counter;
+
+static void *count(void *unused)
+{
+	int i;
+
+	for (i = 0; i < 100000; i++)
+	{
+		counter++;
+	}
+
+	return unused;
+}
+
+__attribute__((constructor)) static void race(void)
+{
+	pthread_t thread;
+
+	pthread_create(&thread, NULL, count, NULL);
+	count(NULL);
+	pthread_join(thread, NULL);
+}
+EOF
+}
+
+testTsanFailsTheBuildOnADataRace()
+{
+	only_plugin tsan
+	write_data_race
+
+	run_cheesemake verify
+
+	assert_failed
+	assert_output_contains 'WARNING: ThreadSanitizer: data race'
+}
+
+testTsanGivesTheProgramItsOptions()
+{
+	only_plugin tsan
+	edit_recipe '.plugins |= map(if .name == "tsan" then .config.options = "exitcode=0" else . end)'
+	write_data_race
+
+	run_cheesemake verify
+
+	assert_status 0
+	assert_output_contains 'TSAN_OPTIONS=exitcode=0 build/bin/analysis this that tother'
+	assert_output_contains 'WARNING: ThreadSanitizer: data race'
+}
+
 testEveryPluginTheExampleConfiguresRuns()
 {
 	run_cheesemake verify
@@ -484,6 +871,9 @@ testEveryPluginTheExampleConfiguresRuns()
 	assert_output_contains "$(clang_tidy_line src/analysis.c)"
 	assert_output_contains 'lines of source in analysis'
 	assert_output_contains 'valgrind --leak-check=yes build/bin/analysis this that tother'
+	assert_output_contains 'ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1 build/bin/analysis this that tother'
+	assert_output_contains 'MSAN_OPTIONS= build/bin/analysis this that tother'
+	assert_output_contains 'TSAN_OPTIONS= build/bin/analysis this that tother'
 	assert_output_contains 'gcovr -s -r .'
 	assert_output_contains 'gprof'
 }
