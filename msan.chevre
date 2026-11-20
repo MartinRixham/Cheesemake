@@ -1,0 +1,56 @@
+#!/bin/bash
+
+rest()
+{
+	shift
+	echo "$@"
+}
+
+msan_compiler()
+{
+	echo "$@" | jq -r .compiler | not is_null | grep . || echo clang
+}
+
+module_tree()
+{
+	(cd "$1"; pwd; get_modules | map module_tree)
+}
+
+all_modules()
+{
+	get_modules | map module_tree
+}
+
+module_include()
+{
+	echo "-I$1/src"
+}
+
+module_source()
+{
+	get_sources "$1/src"
+}
+
+module_link()
+{
+	(cd "$1"; get_links source_dependencies; get_static_links source_dependencies | non_empty | map link_statically)
+}
+
+name="$(get_executable_name)"
+compiler="$(msan_compiler "$@") $(get_compiler | map rest)"
+defines="$(get_defines)"
+modules="$(all_modules)"
+includes="-Isrc $(echo "$modules" | map module_include) $(get_includes source_dependencies)"
+module_sources="$(echo "$modules" | map module_source)"
+links="$(echo "$modules" | map module_link) $(get_links source_dependencies) $(get_static_links source_dependencies | non_empty | map link_statically)"
+flags="$(echo "$@" | jq -r .flags | not is_null)"
+options="$(echo "$@" | jq -r .options | not is_null)"
+args="$(echo "$@" | jq -r .args | not is_null)"
+
+mkdir -p build/msan/build/bin
+copy_all src build/msan
+
+cd build/msan
+verbose $compiler -fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer $flags $defines -o $name $includes $(get_sources src) $module_sources $links
+echo "MSAN_OPTIONS=$options $name $args"
+MSAN_OPTIONS="$options" $name $args

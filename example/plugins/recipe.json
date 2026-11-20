@@ -72,6 +72,14 @@
 					}
 			},
 			{
+				"name": "msan",
+				"phase": "verify",
+				"config":
+					{
+						"args": "this that tother"
+					}
+			},
+			{
 				"name": "gcovr",
 				"phase": "verify"
 			},
